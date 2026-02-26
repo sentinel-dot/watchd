@@ -5,7 +5,15 @@ struct MovieDetailView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.06, green: 0.06, blue: 0.12).ignoresSafeArea()
+            LinearGradient(
+                colors: [
+                    Color(red: 0.98, green: 0.96, blue: 0.94),
+                    Color(red: 0.96, green: 0.93, blue: 0.90)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -14,54 +22,65 @@ struct MovieDetailView: View {
                         .ignoresSafeArea(edges: .top)
 
                     // Content
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 24) {
                         // Title + meta
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 10) {
                             Text(match.movie.title)
-                                .font(.title.weight(.bold))
-                                .foregroundColor(.white)
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
 
                             HStack(spacing: 12) {
-                                Label(String(format: "%.1f", match.movie.voteAverage), systemImage: "star.fill")
-                                    .foregroundColor(.yellow)
-                                    .font(.subheadline.weight(.semibold))
+                                HStack(spacing: 4) {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(Color(red: 0.95, green: 0.77, blue: 0.20))
+                                    Text(String(format: "%.1f", match.movie.voteAverage))
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+                                }
 
                                 if let year = match.movie.releaseYear {
                                     Text(year)
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.6))
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
                                 }
 
                                 matchBadge
                             }
                         }
 
-                        Divider().background(Color.white.opacity(0.1))
+                        Rectangle()
+                            .fill(Color(red: 0.9, green: 0.88, blue: 0.86))
+                            .frame(height: 1)
 
                         // Overview
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Overview")
-                                .font(.headline)
-                                .foregroundColor(.white.opacity(0.7))
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Inhalt")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                                .textCase(.uppercase)
+                                .tracking(0.5)
                             Text(match.movie.overview)
-                                .font(.body)
-                                .foregroundColor(.white.opacity(0.85))
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
                                 .fixedSize(horizontal: false, vertical: true)
+                                .lineSpacing(4)
                         }
 
                         // Streaming
-                        if !match.streamingOptions.isEmpty {
-                            Divider().background(Color.white.opacity(0.1))
-                            streamingSection
-                        }
+                        Rectangle()
+                            .fill(Color(red: 0.9, green: 0.88, blue: 0.86))
+                            .frame(height: 1)
+                        
+                        streamingSection
                     }
-                    .padding(20)
+                    .padding(24)
                 }
             }
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarColorScheme(.light, for: .navigationBar)
     }
 
     // MARK: - Hero Poster
@@ -75,52 +94,82 @@ struct MovieDetailView: View {
                     case .success(let image):
                         image.resizable().scaledToFill()
                     default:
-                        Color.white.opacity(0.1)
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.9, green: 0.88, blue: 0.86),
+                                Color(red: 0.85, green: 0.82, blue: 0.80)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 380)
+                .frame(height: 420)
                 .clipped()
             } else {
-                Color.white.opacity(0.1)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 380)
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.9, green: 0.88, blue: 0.86),
+                        Color(red: 0.85, green: 0.82, blue: 0.80)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: 420)
             }
 
             LinearGradient(
-                colors: [.clear, Color(red: 0.06, green: 0.06, blue: 0.12)],
-                startPoint: .init(x: 0.5, y: 0.4),
+                colors: [
+                    .clear,
+                    Color(red: 0.98, green: 0.96, blue: 0.94).opacity(0.3),
+                    Color(red: 0.98, green: 0.96, blue: 0.94)
+                ],
+                startPoint: .init(x: 0.5, y: 0.3),
                 endPoint: .bottom
             )
         }
-        .frame(height: 380)
+        .frame(height: 420)
     }
 
     // MARK: - Match Badge
 
     private var matchBadge: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             Image(systemName: "heart.fill")
-                .font(.caption2)
-            Text("Matched")
-                .font(.caption.weight(.semibold))
+                .font(.system(size: 11, weight: .semibold))
+            Text("Match")
+                .font(.system(size: 13, weight: .semibold))
         }
-        .foregroundColor(.pink)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.pink.opacity(0.15))
+        .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.12))
         .clipShape(Capsule())
     }
 
     // MARK: - Streaming Section
 
     private var streamingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Where to Watch")
-                .font(.headline)
-                .foregroundColor(.white.opacity(0.7))
+        VStack(alignment: .leading, spacing: 16) {
+            if !match.streamingOptions.isEmpty {
+                Text("Wo schauen?")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                    .textCase(.uppercase)
+                    .tracking(0.5)
 
-            StreamingBadgesGrid(options: match.streamingOptions)
+                StreamingBadgesGrid(options: match.streamingOptions)
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 14, weight: .medium))
+                    Text("Nicht auf Streaming-Diensten verfügbar")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+            }
         }
     }
 }

@@ -26,7 +26,7 @@ final class HomeViewModel: ObservableObject {
     func joinRoom() async {
         let trimmed = joinCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard !trimmed.isEmpty else {
-            errorMessage = "Please enter an invite code."
+            errorMessage = "Bitte gib einen Einladungscode ein."
             showError = true
             return
         }

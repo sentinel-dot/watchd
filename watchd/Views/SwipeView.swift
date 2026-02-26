@@ -4,8 +4,8 @@ struct SwipeView: View {
     @StateObject private var viewModel: SwipeViewModel
     @EnvironmentObject private var authVM: AuthViewModel
 
-    private let cardWidth: CGFloat = UIScreen.main.bounds.width - 40
-    private let cardHeight: CGFloat = UIScreen.main.bounds.height * 0.62
+    private let cardWidth: CGFloat = UIScreen.main.bounds.width - 48
+    private let cardHeight: CGFloat = UIScreen.main.bounds.height * 0.65
 
     init(room: Room) {
         _viewModel = StateObject(wrappedValue: SwipeViewModel(room: room))
@@ -13,30 +13,46 @@ struct SwipeView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.06, green: 0.06, blue: 0.12).ignoresSafeArea()
+            // Sophisticated gradient background
+            LinearGradient(
+                colors: [
+                    Color(red: 0.98, green: 0.96, blue: 0.94),
+                    Color(red: 0.95, green: 0.93, blue: 0.90),
+                    Color(red: 0.92, green: 0.88, blue: 0.85)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
+                Spacer(minLength: 40)
+                
                 cardStack
-                    .padding(.top, 8)
+                
+                Spacer(minLength: 20)
 
                 actionButtons
-                    .padding(.top, 16)
-
-                memberBar
-                    .padding(.top, 12)
-                    .padding(.bottom, 16)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
             }
         }
-        .navigationTitle("Watchd")
+        .navigationTitle("watchd")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarColorScheme(.light, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink {
                     MatchesListView(roomId: viewModel.room.id)
                 } label: {
-                    Label("Matches", systemImage: "heart.fill")
-                        .foregroundColor(.pink)
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 0.85, green: 0.30, blue: 0.25))
+                            .frame(width: 36, height: 36)
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
                 }
             }
         }
@@ -45,18 +61,16 @@ struct SwipeView: View {
                 viewModel.currentMatch = nil
             }
         }
-        .alert("Error", isPresented: $viewModel.showError) {
+        .alert("Fehler", isPresented: $viewModel.showError) {
             Button("OK") {}
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
         .task {
             await viewModel.fetchFeed()
-            await viewModel.fetchRoomMembers()
             viewModel.startSocket()
         }
     }
-
     // MARK: - Card Stack
 
     @ViewBuilder
@@ -66,23 +80,32 @@ struct SwipeView: View {
                 VStack(spacing: 16) {
                     ProgressView()
                         .progressViewStyle(.circular)
-                        .tint(.white)
+                        .tint(Color(red: 0.85, green: 0.30, blue: 0.25))
                         .scaleEffect(1.5)
-                    Text("Loading movies…")
-                        .foregroundColor(.white.opacity(0.6))
+                    Text("Filme werden geladen…")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
                 }
                 .frame(width: cardWidth, height: cardHeight)
             } else if viewModel.movies.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "film.stack")
-                        .font(.system(size: 60))
-                        .foregroundColor(.white.opacity(0.3))
-                    Text("No more movies")
-                        .font(.title3)
-                        .foregroundColor(.white.opacity(0.5))
-                    Text("Check back later for more")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.3))
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 0.9, green: 0.88, blue: 0.86))
+                            .frame(width: 100, height: 100)
+                        Image(systemName: "film.stack")
+                            .font(.system(size: 44, weight: .light))
+                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                    }
+                    
+                    VStack(spacing: 6) {
+                        Text("Keine weiteren Filme")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+                        Text("Schau später nochmal vorbei")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                    }
                 }
                 .frame(width: cardWidth, height: cardHeight)
             } else {
@@ -95,16 +118,17 @@ struct SwipeView: View {
                         isTopCard: isTop
                     )
                     .frame(width: cardWidth, height: cardHeight)
-                    .scaleEffect(isTop ? 1.0 : 1.0 - CGFloat(index) * 0.03)
-                    .offset(y: isTop ? 0 : CGFloat(index) * 10)
-                    .rotationEffect(isTop ? .degrees(Double(viewModel.dragOffset.width) / 22) : .zero)
+                    .scaleEffect(isTop ? 1.0 : 1.0 - CGFloat(index) * 0.04)
+                    .offset(y: isTop ? 0 : CGFloat(index) * 12)
+                    .rotationEffect(isTop ? .degrees(Double(viewModel.dragOffset.width) / 25) : .zero)
                     .offset(
                         x: isTop ? viewModel.dragOffset.width : 0,
-                        y: isTop ? viewModel.dragOffset.height * 0.25 : 0
+                        y: isTop ? viewModel.dragOffset.height * 0.2 : 0
                     )
-                    .animation(.interactiveSpring(response: 0.35, dampingFraction: 0.65), value: viewModel.dragOffset)
+                    .animation(.interactiveSpring(response: 0.4, dampingFraction: 0.7), value: viewModel.dragOffset)
                     .gesture(isTop ? swipeGesture : nil)
                     .zIndex(isTop ? 1 : 0)
+                    .shadow(color: Color.black.opacity(isTop ? 0.15 : 0.08), radius: isTop ? 24 : 12, y: isTop ? 12 : 6)
                 }
             }
         }
@@ -124,103 +148,55 @@ struct SwipeView: View {
     }
 
     // MARK: - Action Buttons
-
+    
     private var actionButtons: some View {
-        HStack(spacing: 40) {
-            // Pass
-            CircleActionButton(icon: "xmark", color: .red, size: 56) {
+        HStack(spacing: 0) {
+            // Pass Button
+            Button {
                 Task { await viewModel.handleDragEnd(CGSize(width: -150, height: 0)) }
-            }
-            .disabled(viewModel.movies.isEmpty)
-
-            // Super Like placeholder (visual)
-            CircleActionButton(icon: "star.fill", color: .blue, size: 44) {}
-                .disabled(true)
-                .opacity(0.4)
-
-            // Like
-            CircleActionButton(icon: "heart.fill", color: .green, size: 56) {
-                Task { await viewModel.handleDragEnd(CGSize(width: 150, height: 0)) }
-            }
-            .disabled(viewModel.movies.isEmpty)
-        }
-    }
-
-    // MARK: - Member Bar
-
-    private var memberBar: some View {
-        HStack(spacing: 12) {
-            ForEach(viewModel.roomMembers) { member in
-                MemberAvatar(name: member.name)
-            }
-
-            if viewModel.roomMembers.count < 2 {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock.fill")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.4))
-                    Text("Waiting for partner…")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.4))
+            } label: {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 28)
+                        .fill(Color.white)
+                        .frame(width: 72, height: 72)
+                        .shadow(color: Color.black.opacity(0.1), radius: 20, y: 8)
+                    
+                    Image(systemName: "xmark")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
                 }
-            } else {
-                Text("Both in room")
-                    .font(.caption)
-                    .foregroundColor(.green.opacity(0.7))
             }
+            .disabled(viewModel.movies.isEmpty)
+            .opacity(viewModel.movies.isEmpty ? 0.4 : 1.0)
 
             Spacer()
-
-            Text("Code: \(viewModel.room.code)")
-                .font(.system(.caption, design: .monospaced).weight(.semibold))
-                .foregroundColor(.white.opacity(0.4))
-        }
-        .padding(.horizontal, 24)
-    }
-}
-
-// MARK: - Circle Button
-
-private struct CircleActionButton: View {
-    let icon: String
-    let color: Color
-    let size: CGFloat
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: size * 0.4, weight: .bold))
-                .foregroundColor(color)
-                .frame(width: size, height: size)
-                .background(color.opacity(0.12))
-                .clipShape(Circle())
-                .overlay(Circle().stroke(color.opacity(0.35), lineWidth: 2))
-        }
-    }
-}
-
-// MARK: - Member Avatar
-
-private struct MemberAvatar: View {
-    let name: String
-
-    private var initials: String {
-        name.split(separator: " ")
-            .prefix(2)
-            .compactMap { $0.first.map { String($0) } }
-            .joined()
-            .uppercased()
-    }
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(LinearGradient(colors: [.pink, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 36, height: 36)
-            Text(initials)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundColor(.white)
+            
+            // Like Button
+            Button {
+                Task { await viewModel.handleDragEnd(CGSize(width: 150, height: 0)) }
+            } label: {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 28)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.85, green: 0.30, blue: 0.25),
+                                    Color(red: 0.90, green: 0.40, blue: 0.35)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 72, height: 72)
+                        .shadow(color: Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3), radius: 20, y: 8)
+                    
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+            }
+            .disabled(viewModel.movies.isEmpty)
+            .opacity(viewModel.movies.isEmpty ? 0.4 : 1.0)
         }
     }
 }

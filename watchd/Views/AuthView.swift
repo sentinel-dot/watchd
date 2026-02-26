@@ -6,8 +6,12 @@ struct AuthView: View {
 
     var body: some View {
         ZStack {
+            // Sophisticated light gradient background
             LinearGradient(
-                colors: [Color(red: 0.06, green: 0.06, blue: 0.12), Color(red: 0.12, green: 0.04, blue: 0.20)],
+                colors: [
+                    Color(red: 0.98, green: 0.96, blue: 0.94),
+                    Color(red: 0.96, green: 0.93, blue: 0.90)
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -16,30 +20,30 @@ struct AuthView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                VStack(spacing: 8) {
+                VStack(spacing: 12) {
                     Text("🎬")
-                        .font(.system(size: 64))
-                    Text("Watchd")
-                        .font(.system(size: 40, weight: .black, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(colors: [.pink, .purple], startPoint: .leading, endPoint: .trailing)
-                        )
-                    Text("Find your next watch together")
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.6))
+                        .font(.system(size: 72))
+                    Text("watchd")
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
+                    Text("Findet gemeinsam euren nächsten Film")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
                 }
-                .padding(.bottom, 40)
+                .padding(.bottom, 48)
 
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
-                        TabButton(title: "Login", isSelected: selectedTab == 0) { selectedTab = 0 }
-                        TabButton(title: "Register", isSelected: selectedTab == 1) { selectedTab = 1 }
+                        TabButton(title: "Anmelden", isSelected: selectedTab == 0) { selectedTab = 0 }
+                        TabButton(title: "Registrieren", isSelected: selectedTab == 1) { selectedTab = 1 }
                     }
-                    .padding(4)
-                    .background(Color.white.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 24)
+                    .padding(6)
+                    .background(Color(red: 0.9, green: 0.88, blue: 0.86))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 28)
 
                     if selectedTab == 0 {
                         LoginForm()
@@ -50,9 +54,12 @@ struct AuthView: View {
                     }
                 }
                 .animation(.easeInOut(duration: 0.25), value: selectedTab)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 24))
-                .padding(.horizontal, 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 28)
+                        .fill(Color.white)
+                        .shadow(color: Color.black.opacity(0.08), radius: 24, y: 12)
+                )
+                .padding(.horizontal, 24)
 
                 Spacer()
                 Spacer()
@@ -69,24 +76,25 @@ private struct LoginForm: View {
     @State private var password = ""
 
     var body: some View {
-        VStack(spacing: 16) {
-            AuthField(icon: "envelope.fill", placeholder: "Email", text: $email, keyboardType: .emailAddress)
-            AuthField(icon: "lock.fill", placeholder: "Password", text: $password, isSecure: true)
+        VStack(spacing: 18) {
+            AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
+            AuthField(icon: "lock.fill", placeholder: "Passwort", text: $password, isSecure: true)
 
             if let msg = authVM.errorMessage {
                 Text(msg)
-                    .font(.caption)
-                    .foregroundColor(.red.opacity(0.85))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
             }
 
-            PrimaryButton(title: "Log In", isLoading: authVM.isLoading) {
+            PrimaryButton(title: "Anmelden", isLoading: authVM.isLoading) {
                 Task { await authVM.login(email: email, password: password) }
             }
+            .padding(.top, 4)
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 28)
+        .padding(.horizontal, 28)
+        .padding(.bottom, 32)
     }
 }
 
@@ -99,25 +107,26 @@ private struct RegisterForm: View {
     @State private var password = ""
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 18) {
             AuthField(icon: "person.fill", placeholder: "Name", text: $name)
-            AuthField(icon: "envelope.fill", placeholder: "Email", text: $email, keyboardType: .emailAddress)
-            AuthField(icon: "lock.fill", placeholder: "Password", text: $password, isSecure: true)
+            AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
+            AuthField(icon: "lock.fill", placeholder: "Passwort", text: $password, isSecure: true)
 
             if let msg = authVM.errorMessage {
                 Text(msg)
-                    .font(.caption)
-                    .foregroundColor(.red.opacity(0.85))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
             }
 
-            PrimaryButton(title: "Create Account", isLoading: authVM.isLoading) {
+            PrimaryButton(title: "Konto erstellen", isLoading: authVM.isLoading) {
                 Task { await authVM.register(name: name, email: email, password: password) }
             }
+            .padding(.top, 4)
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 28)
+        .padding(.horizontal, 28)
+        .padding(.bottom, 32)
     }
 }
 
@@ -131,12 +140,28 @@ private struct TabButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(isSelected ? .white : .white.opacity(0.5))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(isSelected ? .white : Color(red: 0.5, green: 0.5, blue: 0.5))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(isSelected ? Color.purple.opacity(0.7) : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.vertical, 12)
+                .background(
+                    isSelected ? 
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.85, green: 0.30, blue: 0.25),
+                            Color(red: 0.90, green: 0.40, blue: 0.35)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ) : 
+                    LinearGradient(
+                        colors: [Color.clear, Color.clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: isSelected ? Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3) : .clear, radius: 8, y: 4)
         }
     }
 }
@@ -148,29 +173,33 @@ struct AuthField: View {
     var keyboardType: UIKeyboardType = .default
     var isSecure: Bool = false
 
+    private var placeholderColor: Color {
+        Color(red: 0.55, green: 0.55, blue: 0.55)
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             Image(systemName: icon)
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
                 .frame(width: 20)
 
             if isSecure {
-                SecureField(placeholder, text: $text)
-                    .foregroundColor(.white)
+                SecureField("", text: $text, prompt: Text(placeholder).foregroundColor(placeholderColor))
+                    .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
             } else {
-                TextField(placeholder, text: $text)
-                    .foregroundColor(.white)
+                TextField("", text: $text, prompt: Text(placeholder).foregroundColor(placeholderColor))
+                    .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
                     .keyboardType(keyboardType)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(keyboardType == .emailAddress ? .never : .words)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(Color.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .background(Color(red: 0.95, green: 0.93, blue: 0.91))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 
@@ -188,16 +217,24 @@ struct PrimaryButton: View {
                         .tint(.white)
                 } else {
                     Text(title)
-                        .font(.headline)
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 18)
             .background(
-                LinearGradient(colors: [.pink, .purple], startPoint: .leading, endPoint: .trailing)
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.85, green: 0.30, blue: 0.25),
+                        Color(red: 0.90, green: 0.40, blue: 0.35)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
             )
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3), radius: 16, y: 8)
         }
         .disabled(isLoading)
     }
