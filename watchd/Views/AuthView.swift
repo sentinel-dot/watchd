@@ -2,11 +2,10 @@ import SwiftUI
 
 struct AuthView: View {
     @EnvironmentObject private var authVM: AuthViewModel
-    @State private var selectedTab = 0
+    @State private var showRegister = false
 
     var body: some View {
         ZStack {
-            // Sophisticated light gradient background
             LinearGradient(
                 colors: [
                     Color(red: 0.98, green: 0.96, blue: 0.94),
@@ -20,50 +19,52 @@ struct AuthView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                VStack(spacing: 12) {
+                VStack(spacing: 16) {
                     Text("🎬")
-                        .font(.system(size: 72))
+                        .font(.system(size: 70))
                     Text("watchd")
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
                     Text("Findet gemeinsam euren nächsten Film")
                         .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
+                        .foregroundColor(Color(red: 0.45, green: 0.45, blue: 0.45))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 40)
                 }
-                .padding(.bottom, 48)
+                .padding(.bottom, 40)
 
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        TabButton(title: "Anmelden", isSelected: selectedTab == 0) { selectedTab = 0 }
-                        TabButton(title: "Registrieren", isSelected: selectedTab == 1) { selectedTab = 1 }
+                LoginForm(onRegisterTap: { showRegister = true })
+                    .background(
+                        RoundedRectangle(cornerRadius: 28)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 24, y: 12)
+                    )
+                    .padding(.horizontal, 24)
+                
+                Button(action: {
+                    Task { await authVM.guestLogin() }
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.crop.circle.dashed")
+                            .font(.system(size: 15, weight: .medium))
+                        Text("Als Gast fortfahren")
+                            .font(.system(size: 15, weight: .medium))
                     }
-                    .padding(6)
-                    .background(Color(red: 0.9, green: 0.88, blue: 0.86))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                    .padding(.vertical, 14)
                     .padding(.horizontal, 28)
-                    .padding(.bottom, 28)
-
-                    if selectedTab == 0 {
-                        LoginForm()
-                            .transition(.asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .trailing)))
-                    } else {
-                        RegisterForm()
-                            .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
-                    }
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: Color.black.opacity(0.06), radius: 12, y: 6)
                 }
-                .animation(.easeInOut(duration: 0.25), value: selectedTab)
-                .background(
-                    RoundedRectangle(cornerRadius: 28)
-                        .fill(Color.white)
-                        .shadow(color: Color.black.opacity(0.08), radius: 24, y: 12)
-                )
-                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .disabled(authVM.isLoading)
 
-                Spacer()
                 Spacer()
             }
+        }
+        .sheet(isPresented: $showRegister) {
+            RegisterView()
         }
     }
 }
@@ -74,97 +75,174 @@ private struct LoginForm: View {
     @EnvironmentObject private var authVM: AuthViewModel
     @State private var email = ""
     @State private var password = ""
+    @State private var showForgotPassword = false
+    let onRegisterTap: () -> Void
 
     var body: some View {
-        VStack(spacing: 18) {
-            AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
-            AuthField(icon: "lock.fill", placeholder: "Passwort", text: $password, isSecure: true)
+        VStack(spacing: 0) {
+            VStack(spacing: 18) {
+                Text("Willkommen zurück")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                VStack(spacing: 14) {
+                    AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
+                    AuthField(icon: "lock.fill", placeholder: "Passwort", text: $password, isSecure: true)
+                }
 
-            if let msg = authVM.errorMessage {
-                Text(msg)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
-            }
+                if let msg = authVM.errorMessage {
+                    Text(msg)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
-            PrimaryButton(title: "Anmelden", isLoading: authVM.isLoading) {
-                Task { await authVM.login(email: email, password: password) }
+                PrimaryButton(title: "Anmelden", isLoading: authVM.isLoading) {
+                    Task { await authVM.login(email: email, password: password) }
+                }
+                .padding(.top, 4)
+                
+                Button(action: { showForgotPassword = true }) {
+                    Text("Passwort vergessen?")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.6))
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 6)
             }
-            .padding(.top, 4)
+            .padding(.horizontal, 28)
+            .padding(.top, 28)
+            .padding(.bottom, 20)
+            
+            Divider()
+                .padding(.horizontal, 28)
+            
+            Button(action: onRegisterTap) {
+                HStack(spacing: 6) {
+                    Text("Noch kein Konto?")
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                    Text("Jetzt registrieren")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
         }
-        .padding(.horizontal, 28)
-        .padding(.bottom, 32)
+        .sheet(isPresented: $showForgotPassword) {
+            ForgotPasswordView()
+        }
     }
 }
 
-// MARK: - Register Form
+// MARK: - Register View
 
-private struct RegisterForm: View {
+private struct RegisterView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authVM: AuthViewModel
     @State private var name = ""
     @State private var email = ""
     @State private var password = ""
+    @State private var confirmPassword = ""
 
     var body: some View {
-        VStack(spacing: 18) {
-            AuthField(icon: "person.fill", placeholder: "Name", text: $name)
-            AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
-            AuthField(icon: "lock.fill", placeholder: "Passwort", text: $password, isSecure: true)
+        NavigationView {
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.98, green: 0.96, blue: 0.94),
+                        Color(red: 0.96, green: 0.93, blue: 0.90)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 0) {
+                        VStack(spacing: 20) {
+                            Text("🎬")
+                                .font(.system(size: 60))
+                            
+                            VStack(spacing: 6) {
+                                Text("Konto erstellen")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+                                Text("Werde Teil der watchd Community")
+                                    .font(.system(size: 15, weight: .regular))
+                                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                                    .multilineTextAlignment(.center)
+                            }
+                        }
+                        .padding(.top, 32)
+                        .padding(.bottom, 32)
+                        
+                        VStack(spacing: 20) {
+                            AuthField(icon: "person.fill", placeholder: "Name", text: $name)
+                            AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
+                            AuthField(icon: "lock.fill", placeholder: "Passwort (mind. 8 Zeichen)", text: $password, isSecure: true)
+                            AuthField(icon: "lock.fill", placeholder: "Passwort bestätigen", text: $confirmPassword, isSecure: true)
 
-            if let msg = authVM.errorMessage {
-                Text(msg)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
-            }
+                            if let msg = authVM.errorMessage {
+                                Text(msg)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 8)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
 
-            PrimaryButton(title: "Konto erstellen", isLoading: authVM.isLoading) {
-                Task { await authVM.register(name: name, email: email, password: password) }
+                            PrimaryButton(title: "Registrieren", isLoading: authVM.isLoading) {
+                                Task { 
+                                    guard password == confirmPassword else {
+                                        authVM.errorMessage = "Passwörter stimmen nicht überein"
+                                        return
+                                    }
+                                    guard password.count >= 8 else {
+                                        authVM.errorMessage = "Passwort muss mindestens 8 Zeichen lang sein"
+                                        return
+                                    }
+                                    await authVM.register(name: name, email: email, password: password)
+                                }
+                            }
+                            .padding(.top, 4)
+                        }
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 32)
+                        .background(
+                            RoundedRectangle(cornerRadius: 28)
+                                .fill(Color.white)
+                                .shadow(color: Color.black.opacity(0.08), radius: 24, y: 12)
+                        )
+                        .padding(.horizontal, 24)
+                        
+                        Spacer(minLength: 40)
+                    }
+                }
             }
-            .padding(.top, 4)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { dismiss() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Zurück")
+                                .font(.system(size: 17, weight: .regular))
+                        }
+                        .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
+                    }
+                }
+            }
         }
-        .padding(.horizontal, 28)
-        .padding(.bottom, 32)
     }
 }
 
 // MARK: - Shared Components
-
-private struct TabButton: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(isSelected ? .white : Color(red: 0.5, green: 0.5, blue: 0.5))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                    isSelected ? 
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.85, green: 0.30, blue: 0.25),
-                            Color(red: 0.90, green: 0.40, blue: 0.35)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ) : 
-                    LinearGradient(
-                        colors: [Color.clear, Color.clear],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: isSelected ? Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3) : .clear, radius: 8, y: 4)
-        }
-    }
-}
 
 struct AuthField: View {
     let icon: String

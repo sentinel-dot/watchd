@@ -3,6 +3,7 @@ import SwiftUI
 struct SwipeView: View {
     @StateObject private var viewModel: SwipeViewModel
     @EnvironmentObject private var authVM: AuthViewModel
+    @EnvironmentObject private var networkMonitor: NetworkMonitor
 
     private let cardWidth: CGFloat = UIScreen.main.bounds.width - 48
     private let cardHeight: CGFloat = UIScreen.main.bounds.height * 0.65
@@ -12,8 +13,7 @@ struct SwipeView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Sophisticated gradient background
+        ZStack(alignment: .top) {
             LinearGradient(
                 colors: [
                     Color(red: 0.98, green: 0.96, blue: 0.94),
@@ -26,9 +26,31 @@ struct SwipeView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
+                if !networkMonitor.isConnected {
+                    OfflineBanner()
+                        .animation(.spring(), value: networkMonitor.isConnected)
+                }
+                
                 Spacer(minLength: 40)
                 
-                cardStack
+                ZStack(alignment: .top) {
+                    cardStack
+                    
+                    if viewModel.swipeCount > 0 {
+                        HStack {
+                            Text("\(viewModel.swipeCount) Filme bewertet")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.white.opacity(0.8))
+                                .clipShape(Capsule())
+                            Spacer()
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+                    }
+                }
                 
                 Spacer(minLength: 20)
 
@@ -70,6 +92,7 @@ struct SwipeView: View {
             await viewModel.fetchFeed()
             viewModel.startSocket()
         }
+        .disabled(!networkMonitor.isConnected)
     }
     // MARK: - Card Stack
 
@@ -150,7 +173,7 @@ struct SwipeView: View {
     // MARK: - Action Buttons
     
     private var actionButtons: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 16) {
             // Pass Button
             Button {
                 Task { await viewModel.handleDragEnd(CGSize(width: -150, height: 0)) }

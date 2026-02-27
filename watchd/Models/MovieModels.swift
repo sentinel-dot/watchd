@@ -55,6 +55,11 @@ struct MovieFeedResponse: Decodable {
     let movies: [Movie]
 }
 
+struct NextMovieResponse: Decodable {
+    let movie: Movie?
+    let stackEmpty: Bool
+}
+
 struct SwipeRequest: Encodable {
     let movieId: Int
     let roomId: Int

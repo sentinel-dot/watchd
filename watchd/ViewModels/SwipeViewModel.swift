@@ -11,9 +11,9 @@ final class SwipeViewModel: ObservableObject {
     @Published var roomMembers: [RoomMember] = []
     @Published var showError = false
     @Published var errorMessage: String?
+    @Published var swipeCount = 0
 
     let room: Room
-
     private var currentPage = 1
     private var isFetching = false
     private var hasMorePages = true
@@ -21,21 +21,48 @@ final class SwipeViewModel: ObservableObject {
 
     init(room: Room) {
         self.room = room
-    }
-
-    // MARK: - Socket
-
-    func startSocket() {
-        guard let token = KeychainHelper.load(forKey: KeychainHelper.tokenKey) else { return }
-
-        SocketService.shared.connect(token: token, roomId: room.id)
-
+        
         SocketService.shared.matchPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 self?.currentMatch = event
             }
             .store(in: &cancellables)
+        
+        SocketService.shared.filtersUpdatedPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                Task {
+                    self.movies.removeAll()
+                    self.currentPage = 1
+                    self.hasMorePages = true
+                    await self.fetchFeed()
+                }
+            }
+            .store(in: &cancellables)
+        
+        SocketService.shared.partnerLeftPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                // Partner has left - could show a notification
+            }
+            .store(in: &cancellables)
+        
+        SocketService.shared.roomDissolvedPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] roomId in
+                guard let self = self, self.room.id == roomId else { return }
+                // Room was dissolved - could show a message
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: - Socket
+
+    func startSocket() {
+        guard let token = KeychainHelper.load(forKey: KeychainHelper.tokenKey) else { return }
+        SocketService.shared.connect(token: token, roomId: room.id)
     }
 
     // MARK: - Feed
@@ -97,10 +124,19 @@ final class SwipeViewModel: ObservableObject {
             dragOffset = CGSize(width: flyX, height: 50)
         }
 
+        if direction == "right" {
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+        } else {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+        }
+
         try? await Task.sleep(nanoseconds: 250_000_000)
 
         movies.removeFirst()
         dragOffset = .zero
+        swipeCount += 1
 
         if movies.count <= 5 {
             Task { await fetchNextPage() }
@@ -113,7 +149,7 @@ final class SwipeViewModel: ObservableObject {
             showError = true
         }
     }
-
+    
     private func fetchNextPage() async {
         await fetchFeed()
     }

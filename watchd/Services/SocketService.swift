@@ -9,6 +9,10 @@ final class SocketService: ObservableObject {
     private var socket: SocketIOClient?
 
     let matchPublisher = PassthroughSubject<SocketMatchEvent, Never>()
+    let filtersUpdatedPublisher = PassthroughSubject<RoomFilters, Never>()
+    let partnerLeftPublisher = PassthroughSubject<Int, Never>()
+    let partnerJoinedPublisher = PassthroughSubject<Int, Never>()
+    let roomDissolvedPublisher = PassthroughSubject<Int, Never>()
 
     @Published var isConnected = false
 
@@ -50,6 +54,42 @@ final class SocketService: ObservableObject {
             guard let event = try? decoder.decode(SocketMatchEvent.self, from: jsonData) else { return }
             Task { @MainActor [weak self] in
                 self?.matchPublisher.send(event)
+            }
+        }
+        
+        socket?.on("filters_updated") { [weak self] data, _ in
+            guard let dict = data.first as? [String: Any],
+                  let filtersDict = dict["filters"] as? [String: Any],
+                  let jsonData = try? JSONSerialization.data(withJSONObject: filtersDict) else { return }
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            guard let filters = try? decoder.decode(RoomFilters.self, from: jsonData) else { return }
+            Task { @MainActor [weak self] in
+                self?.filtersUpdatedPublisher.send(filters)
+            }
+        }
+        
+        socket?.on("partner_left") { [weak self] data, _ in
+            guard let dict = data.first as? [String: Any],
+                  let userId = dict["userId"] as? Int else { return }
+            Task { @MainActor [weak self] in
+                self?.partnerLeftPublisher.send(userId)
+            }
+        }
+        
+        socket?.on("partner_joined") { [weak self] data, _ in
+            guard let dict = data.first as? [String: Any],
+                  let userId = dict["userId"] as? Int else { return }
+            Task { @MainActor [weak self] in
+                self?.partnerJoinedPublisher.send(userId)
+            }
+        }
+        
+        socket?.on("room_dissolved") { [weak self] data, _ in
+            guard let dict = data.first as? [String: Any],
+                  let roomId = dict["roomId"] as? Int else { return }
+            Task { @MainActor [weak self] in
+                self?.roomDissolvedPublisher.send(roomId)
             }
         }
 

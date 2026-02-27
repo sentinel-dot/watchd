@@ -73,6 +73,9 @@ final class APIService {
         }
 
         if http.statusCode == 401 {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: NSNotification.Name("unauthorizedError"), object: nil)
+            }
             throw APIError.unauthorized
         }
 
@@ -104,11 +107,42 @@ final class APIService {
         let body = LoginRequest(email: email, password: password)
         return try await request(path: "/auth/login", method: "POST", body: body, requiresAuth: false)
     }
+    
+    func guestLogin() async throws -> AuthResponse {
+        return try await request(path: "/auth/guest", method: "POST", requiresAuth: false)
+    }
+    
+    func upgradeAccount(email: String, password: String) async throws -> AuthResponse {
+        let body = UpgradeAccountRequest(email: email, password: password)
+        return try await request(path: "/auth/upgrade", method: "POST", body: body)
+    }
+    
+    func forgotPassword(email: String) async throws -> MessageResponse {
+        let body = ForgotPasswordRequest(email: email)
+        return try await request(path: "/auth/forgot-password", method: "POST", body: body, requiresAuth: false)
+    }
+    
+    func resetPassword(token: String, newPassword: String) async throws -> MessageResponse {
+        let body = ResetPasswordRequest(token: token, newPassword: newPassword)
+        return try await request(path: "/auth/reset-password", method: "POST", body: body, requiresAuth: false)
+    }
+    
+    // MARK: - Users
+    
+    func updateUserName(name: String) async throws -> UpdateUserResponse {
+        let body = UpdateUserNameRequest(name: name)
+        return try await request(path: "/users/me", method: "PATCH", body: body)
+    }
 
     // MARK: - Rooms
 
-    func createRoom() async throws -> RoomResponse {
-        return try await request(path: "/rooms", method: "POST")
+    func createRoom(name: String? = nil, filters: RoomFilters? = nil) async throws -> RoomResponse {
+        struct CreateRoomBody: Encodable {
+            let name: String?
+            let filters: RoomFilters?
+        }
+        let body = CreateRoomBody(name: name, filters: filters)
+        return try await request(path: "/rooms", method: "POST", body: body)
     }
 
     func joinRoom(code: String) async throws -> RoomResponse {
@@ -119,11 +153,39 @@ final class APIService {
     func getRoom(id: Int) async throws -> RoomDetailResponse {
         return try await request(path: "/rooms/\(id)")
     }
+    
+    func getRooms() async throws -> RoomsListResponse {
+        return try await request(path: "/rooms")
+    }
+    
+    func updateRoomName(roomId: Int, name: String) async throws -> RoomResponse {
+        struct UpdateNameBody: Encodable {
+            let name: String
+        }
+        let body = UpdateNameBody(name: name)
+        return try await request(path: "/rooms/\(roomId)", method: "PATCH", body: body)
+    }
+    
+    func updateRoomFilters(roomId: Int, filters: RoomFilters) async throws -> RoomResponse {
+        struct UpdateFiltersBody: Encodable {
+            let filters: RoomFilters
+        }
+        let body = UpdateFiltersBody(filters: filters)
+        return try await request(path: "/rooms/\(roomId)/filters", method: "PATCH", body: body)
+    }
+    
+    func leaveRoom(roomId: Int) async throws -> LeaveRoomResponse {
+        return try await request(path: "/rooms/\(roomId)/leave", method: "DELETE")
+    }
 
     // MARK: - Movies
 
     func getMovieFeed(roomId: Int, page: Int = 1) async throws -> MovieFeedResponse {
         return try await request(path: "/movies/feed?roomId=\(roomId)&page=\(page)")
+    }
+    
+    func getNextMovie(roomId: Int) async throws -> NextMovieResponse {
+        return try await request(path: "/movies/rooms/\(roomId)/next-movie")
     }
 
     // MARK: - Swipes
@@ -137,5 +199,31 @@ final class APIService {
 
     func getMatches(roomId: Int) async throws -> MatchesResponse {
         return try await request(path: "/matches/\(roomId)")
+    }
+    
+    func updateMatchWatched(matchId: Int, watched: Bool) async throws -> UpdateMatchResponse {
+        struct UpdateWatchedBody: Encodable {
+            let watched: Bool
+        }
+        let body = UpdateWatchedBody(watched: watched)
+        return try await request(path: "/matches/\(matchId)", method: "PATCH", body: body)
+    }
+    
+    // MARK: - Favorites
+    
+    func addFavorite(movieId: Int) async throws -> MessageResponse {
+        struct AddFavoriteBody: Encodable {
+            let movieId: Int
+        }
+        let body = AddFavoriteBody(movieId: movieId)
+        return try await request(path: "/matches/favorites", method: "POST", body: body)
+    }
+    
+    func removeFavorite(movieId: Int) async throws -> MessageResponse {
+        return try await request(path: "/matches/favorites/\(movieId)", method: "DELETE")
+    }
+    
+    func getFavorites() async throws -> FavoritesResponse {
+        return try await request(path: "/matches/favorites/list")
     }
 }

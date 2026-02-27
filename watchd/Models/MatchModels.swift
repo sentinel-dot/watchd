@@ -4,8 +4,11 @@ struct Match: Decodable, Identifiable {
     let id: Int
     let roomId: Int
     let matchedAt: String
+    let watched: Bool?
     let movie: MatchMovie
     let streamingOptions: [StreamingOption]
+
+    var isWatched: Bool { watched ?? false }
 }
 
 struct MatchMovie: Decodable {
@@ -30,6 +33,23 @@ struct MatchMovie: Decodable {
 
 struct MatchesResponse: Decodable {
     let matches: [Match]
+}
+
+struct UpdateMatchResponse: Decodable {
+    let message: String
+    let matchId: Int
+    let watched: Bool
+}
+
+struct Favorite: Decodable, Identifiable {
+    let id: Int
+    let createdAt: String
+    let movie: MatchMovie
+    let streamingOptions: [StreamingOption]
+}
+
+struct FavoritesResponse: Decodable {
+    let favorites: [Favorite]
 }
 
 struct SocketMatchEvent: Decodable, Identifiable {

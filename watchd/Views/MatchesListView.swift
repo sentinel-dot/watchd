@@ -86,6 +86,13 @@ struct MatchesListView: View {
 
 private struct MatchRow: View {
     let match: Match
+    @State private var isWatched: Bool
+    @State private var isUpdating = false
+    
+    init(match: Match) {
+        self.match = match
+        self._isWatched = State(initialValue: match.isWatched)
+    }
 
     var body: some View {
         HStack(spacing: 16) {
@@ -107,12 +114,14 @@ private struct MatchRow: View {
             .frame(width: 70, height: 100)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: Color.black.opacity(0.08), radius: 8, y: 4)
+            .opacity(isWatched ? 0.5 : 1.0)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(match.movie.title)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
                     .lineLimit(2)
+                    .strikethrough(isWatched, color: Color(red: 0.5, green: 0.5, blue: 0.5))
 
                 HStack(spacing: 6) {
                     Image(systemName: "star.fill")
@@ -134,15 +143,55 @@ private struct MatchRow: View {
             }
 
             Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.7))
+            
+            Button(action: {
+                toggleWatched()
+            }) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isWatched ? Color(red: 0.2, green: 0.7, blue: 0.3).opacity(0.15) : Color(red: 0.9, green: 0.88, blue: 0.86))
+                        .frame(width: 32, height: 32)
+                    
+                    if isUpdating {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .scaleEffect(0.7)
+                    } else {
+                        Image(systemName: isWatched ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(isWatched ? Color(red: 0.2, green: 0.7, blue: 0.3) : Color(red: 0.5, green: 0.5, blue: 0.5))
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(isUpdating)
         }
         .padding(16)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
+    }
+    
+    private func toggleWatched() {
+        isUpdating = true
+        let newState = !isWatched
+        
+        Task {
+            do {
+                let _ = try await APIService.shared.updateMatchWatched(matchId: match.id, watched: newState)
+                await MainActor.run {
+                    isWatched = newState
+                    isUpdating = false
+                    
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                }
+            } catch {
+                await MainActor.run {
+                    isUpdating = false
+                }
+            }
+        }
     }
 
     @ViewBuilder

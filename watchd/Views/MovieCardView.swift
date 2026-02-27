@@ -4,8 +4,10 @@ struct MovieCardView: View {
     let movie: Movie
     let dragOffset: CGSize
     let isTopCard: Bool
+    @StateObject private var favoritesVM = FavoritesViewModel()
     
     @State private var isOverviewExpanded = false
+    @State private var isFavorite = false
 
     private var likeOpacity: Double {
         let progress = dragOffset.width / 100
@@ -20,10 +22,29 @@ struct MovieCardView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
-                // Poster with rounded corners
                 posterImage(size: geo.size)
+                
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            toggleFavorite()
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.black.opacity(0.5))
+                                    .frame(width: 44, height: 44)
+                                
+                                Image(systemName: isFavorite ? "bookmark.fill" : "bookmark")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .padding(16)
+                    }
+                    Spacer()
+                }
 
-                // Bottom gradient + info overlay (full width = poster width)
                 VStack(alignment: .leading, spacing: 8) {
                     Spacer()
 
@@ -176,6 +197,17 @@ struct MovieCardView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: color.opacity(0.4), radius: 12, y: 6)
             .rotationEffect(.degrees(rotation))
+    }
+    
+    private func toggleFavorite() {
+        isFavorite.toggle()
+        
+        Task {
+            await favoritesVM.toggleFavorite(movieId: movie.id)
+            
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+        }
     }
 }
 
