@@ -7,6 +7,8 @@ struct ForgotPasswordView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
 
+    @FocusState private var isEmailFocused: Bool
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -28,7 +30,12 @@ struct ForgotPasswordView: View {
                     .padding(.bottom, 12)
 
                     VStack(spacing: 18) {
-                        AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
+                        AuthField(
+                            icon: "envelope.fill", placeholder: "E-Mail", text: $email,
+                            keyboardType: .emailAddress, textContentType: .emailAddress,
+                            submitLabel: .send, onSubmit: { Task { await sendResetLink() } },
+                            focusState: $isEmailFocused
+                        )
 
                         if let error = errorMessage {
                             Text(error)
@@ -56,6 +63,7 @@ struct ForgotPasswordView: View {
                     Spacer()
                 }
                 .padding(.top, 60)
+                .ignoresSafeArea(.keyboard)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -101,6 +109,9 @@ struct ResetPasswordView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
 
+    @FocusState private var isNewPasswordFocused: Bool
+    @FocusState private var isConfirmPasswordFocused: Bool
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -121,8 +132,18 @@ struct ResetPasswordView: View {
                     .padding(.bottom, 12)
 
                     VStack(spacing: 18) {
-                        AuthField(icon: "lock.fill", placeholder: "Neues Passwort", text: $newPassword, isSecure: true)
-                        AuthField(icon: "lock.fill", placeholder: "Passwort bestätigen", text: $confirmPassword, isSecure: true)
+                        AuthField(
+                            icon: "lock.fill", placeholder: "Neues Passwort", text: $newPassword,
+                            isSecure: true, textContentType: .newPassword,
+                            submitLabel: .next, onSubmit: { isConfirmPasswordFocused = true },
+                            focusState: $isNewPasswordFocused
+                        )
+                        AuthField(
+                            icon: "lock.fill", placeholder: "Passwort bestätigen", text: $confirmPassword,
+                            isSecure: true, textContentType: .newPassword,
+                            submitLabel: .done, onSubmit: { Task { await resetPassword() } },
+                            focusState: $isConfirmPasswordFocused
+                        )
 
                         if let error = errorMessage {
                             Text(error)
@@ -143,6 +164,7 @@ struct ResetPasswordView: View {
                     Spacer()
                 }
                 .padding(.top, 60)
+                .ignoresSafeArea(.keyboard)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)

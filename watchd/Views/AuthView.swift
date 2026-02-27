@@ -44,6 +44,8 @@ struct AuthView: View {
 
                 Spacer()
             }
+            // Keyboard slides over the spacers instead of pushing content up
+            .ignoresSafeArea(.keyboard)
         }
         .sheet(isPresented: $showRegister) {
             RegisterView()
@@ -60,6 +62,10 @@ private struct LoginForm: View {
     @State private var showForgotPassword = false
     let onRegisterTap: () -> Void
 
+    // Separate Bool focus states ensure .focused() lands directly on TextField/SecureField
+    @FocusState private var isEmailFocused: Bool
+    @FocusState private var isPasswordFocused: Bool
+
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 20) {
@@ -69,8 +75,19 @@ private struct LoginForm: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(spacing: 14) {
-                    AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
-                    AuthField(icon: "lock.fill", placeholder: "Passwort", text: $password, isSecure: true)
+                    AuthField(
+                        icon: "envelope.fill", placeholder: "E-Mail", text: $email,
+                        keyboardType: .emailAddress, textContentType: .emailAddress,
+                        submitLabel: .next, onSubmit: { isPasswordFocused = true },
+                        focusState: $isEmailFocused
+                    )
+                    AuthField(
+                        icon: "lock.fill", placeholder: "Passwort", text: $password,
+                        isSecure: true, textContentType: .password,
+                        submitLabel: .go,
+                        onSubmit: { Task { await authVM.login(email: email, password: password) } },
+                        focusState: $isPasswordFocused
+                    )
                 }
 
                 if let msg = authVM.errorMessage {
@@ -135,6 +152,11 @@ private struct RegisterView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
 
+    @FocusState private var isNameFocused: Bool
+    @FocusState private var isEmailFocused: Bool
+    @FocusState private var isPasswordFocused: Bool
+    @FocusState private var isConfirmPasswordFocused: Bool
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -161,10 +183,31 @@ private struct RegisterView: View {
                         .padding(.bottom, 32)
 
                         VStack(spacing: 20) {
-                            AuthField(icon: "person.fill", placeholder: "Name", text: $name)
-                            AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
-                            AuthField(icon: "lock.fill", placeholder: "Passwort (mind. 8 Zeichen)", text: $password, isSecure: true)
-                            AuthField(icon: "lock.fill", placeholder: "Passwort bestätigen", text: $confirmPassword, isSecure: true)
+                            AuthField(
+                                icon: "person.fill", placeholder: "Name", text: $name,
+                                textContentType: .name,
+                                submitLabel: .next, onSubmit: { isEmailFocused = true },
+                                focusState: $isNameFocused
+                            )
+                            AuthField(
+                                icon: "envelope.fill", placeholder: "E-Mail", text: $email,
+                                keyboardType: .emailAddress, textContentType: .emailAddress,
+                                submitLabel: .next, onSubmit: { isPasswordFocused = true },
+                                focusState: $isEmailFocused
+                            )
+                            AuthField(
+                                icon: "lock.fill", placeholder: "Passwort (mind. 8 Zeichen)", text: $password,
+                                isSecure: true, textContentType: .newPassword,
+                                submitLabel: .next, onSubmit: { isConfirmPasswordFocused = true },
+                                focusState: $isPasswordFocused
+                            )
+                            AuthField(
+                                icon: "lock.fill", placeholder: "Passwort bestätigen", text: $confirmPassword,
+                                isSecure: true, textContentType: .newPassword,
+                                submitLabel: .join,
+                                onSubmit: { Task { await register() } },
+                                focusState: $isConfirmPasswordFocused
+                            )
 
                             if let msg = authVM.errorMessage {
                                 Text(msg)
@@ -176,17 +219,7 @@ private struct RegisterView: View {
                             }
 
                             PrimaryButton(title: "Registrieren", isLoading: authVM.isLoading) {
-                                Task {
-                                    guard password == confirmPassword else {
-                                        authVM.errorMessage = "Passwörter stimmen nicht überein"
-                                        return
-                                    }
-                                    guard password.count >= 8 else {
-                                        authVM.errorMessage = "Passwort muss mindestens 8 Zeichen lang sein"
-                                        return
-                                    }
-                                    await authVM.register(name: name, email: email, password: password)
-                                }
+                                Task { await register() }
                             }
                             .padding(.top, 4)
                         }
@@ -199,6 +232,7 @@ private struct RegisterView: View {
                         Spacer(minLength: 40)
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -216,9 +250,21 @@ private struct RegisterView: View {
             }
         }
     }
+
+    private func register() async {
+        guard password == confirmPassword else {
+            authVM.errorMessage = "Passwörter stimmen nicht überein"
+            return
+        }
+        guard password.count >= 8 else {
+            authVM.errorMessage = "Passwort muss mindestens 8 Zeichen lang sein"
+            return
+        }
+        await authVM.register(name: name, email: email, password: password)
+    }
 }
 
-// MARK: - Auth Field (Netflix dark input)
+// MARK: - Auth Field
 
 struct AuthField: View {
     let icon: String
@@ -226,6 +272,10 @@ struct AuthField: View {
     @Binding var text: String
     var keyboardType: UIKeyboardType = .default
     var isSecure: Bool = false
+    var textContentType: UITextContentType? = nil
+    var submitLabel: SubmitLabel = .done
+    var onSubmit: (() -> Void)? = nil
+    var focusState: FocusState<Bool>.Binding? = nil
 
     var body: some View {
         HStack(spacing: 14) {
@@ -238,18 +288,39 @@ struct AuthField: View {
                     .foregroundColor(WatchdTheme.textPrimary)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+                    .textContentType(textContentType)
+                    .submitLabel(submitLabel)
+                    .onSubmit { onSubmit?() }
+                    .optionallyFocused(focusState)
             } else {
                 TextField("", text: $text, prompt: Text(placeholder).foregroundColor(WatchdTheme.textTertiary))
                     .foregroundColor(WatchdTheme.textPrimary)
                     .keyboardType(keyboardType)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(keyboardType == .emailAddress ? .never : .words)
+                    .textContentType(textContentType)
+                    .submitLabel(submitLabel)
+                    .onSubmit { onSubmit?() }
+                    .optionallyFocused(focusState)
             }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
         .background(WatchdTheme.backgroundInput)
         .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+// MARK: - Focus Helper
+
+private extension View {
+    @ViewBuilder
+    func optionallyFocused(_ binding: FocusState<Bool>.Binding?) -> some View {
+        if let b = binding {
+            self.focused(b)
+        } else {
+            self
+        }
     }
 }
 
