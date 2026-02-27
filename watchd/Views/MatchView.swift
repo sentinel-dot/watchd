@@ -159,6 +159,8 @@ struct StreamingBadgesGrid: View {
 struct StreamingBadge: View {
     let option: StreamingOption
 
+    private static let badgeHeight: CGFloat = 118
+
     var body: some View {
         VStack(spacing: 8) {
             AsyncImage(url: option.package.iconURL) { phase in
@@ -183,11 +185,13 @@ struct StreamingBadge: View {
             Text(option.package.clearName)
                 .font(WatchdTheme.labelUppercase())
                 .foregroundColor(WatchdTheme.textSecondary)
-                .lineLimit(2)
+                .lineLimit(1)
+                .truncationMode(.tail)
                 .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
+        .frame(maxWidth: .infinity)
+        .frame(height: Self.badgeHeight)
         .background(WatchdTheme.backgroundCard)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(

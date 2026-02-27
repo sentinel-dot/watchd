@@ -17,6 +17,8 @@ final class HomeViewModel: ObservableObject {
     @Published var showFiltersForRoom: Room?
     @Published var showLeaveConfirmation = false
     @Published var roomToLeave: Room?
+    @Published var roomToRename: Room?
+    @Published var renameRoomName: String = ""
 
     init() {
         setupDeepLinkListener()
@@ -102,6 +104,19 @@ final class HomeViewModel: ObservableObject {
         navigateToSwipe = true
     }
     
+    func updateRoomName(roomId: Int, name: String) async {
+        errorMessage = nil
+        do {
+            _ = try await APIService.shared.updateRoomName(roomId: roomId, name: name)
+            await loadRooms()
+            roomToRename = nil
+            renameRoomName = ""
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+
     func leaveRoom(_ room: Room) async {
         isLoading = true
         errorMessage = nil

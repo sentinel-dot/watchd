@@ -29,6 +29,10 @@ struct HomeView: View {
                                         userRoomNumber: index + 1,
                                         onTap: { viewModel.selectRoom(room) },
                                         onEditFilters: { viewModel.showFiltersForRoom = room },
+                                        onRename: {
+                                            viewModel.roomToRename = room
+                                            viewModel.renameRoomName = room.name ?? ""
+                                        },
                                         onLeave: {
                                             viewModel.roomToLeave = room
                                             viewModel.showLeaveConfirmation = true
@@ -75,6 +79,26 @@ struct HomeView: View {
         )) {
             if let room = viewModel.showFiltersForRoom {
                 RoomFiltersView(roomId: room.id, currentFilters: room.filters)
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { viewModel.roomToRename != nil },
+            set: { if !$0 { viewModel.roomToRename = nil } }
+        )) {
+            if let room = viewModel.roomToRename {
+                RenameRoomSheet(
+                    room: room,
+                    name: $viewModel.renameRoomName,
+                    onSave: {
+                        Task {
+                            await viewModel.updateRoomName(roomId: room.id, name: viewModel.renameRoomName.trimmingCharacters(in: .whitespacesAndNewlines))
+                        }
+                    },
+                    onDismiss: {
+                        viewModel.roomToRename = nil
+                        viewModel.renameRoomName = ""
+                    }
+                )
             }
         }
         .alert("Fehler", isPresented: $viewModel.showError) {
@@ -127,6 +151,11 @@ struct HomeView: View {
                     Button(action: { viewModel.showUpgradeAccount = true }) {
                         Label("Konto erstellen", systemImage: "arrow.up.circle")
                     }
+                }
+                NavigationLink {
+                    FavoritesListView()
+                } label: {
+                    Label("Favoriten", systemImage: "star")
                 }
                 NavigationLink {
                     ArchivedRoomsView()
@@ -203,6 +232,7 @@ private struct RoomCard: View {
     let userRoomNumber: Int
     let onTap: () -> Void
     let onEditFilters: () -> Void
+    let onRename: () -> Void
     let onLeave: () -> Void
     @State private var copied = false
 
@@ -265,6 +295,9 @@ private struct RoomCard: View {
                     Spacer()
 
                     Menu {
+                        Button { onRename() } label: {
+                            Label("Name ändern", systemImage: "pencil")
+                        }
                         Button { onEditFilters() } label: {
                             Label("Filter", systemImage: "slider.horizontal.3")
                         }
@@ -290,6 +323,58 @@ private struct RoomCard: View {
             .opacity(isInactive ? 0.5 : 1.0)
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Rename Room Sheet
+
+private struct RenameRoomSheet: View {
+    let room: Room
+    @Binding var name: String
+    let onSave: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                WatchdTheme.background.ignoresSafeArea()
+
+                VStack(spacing: 24) {
+                    TextField("Raumname", text: $name, prompt: Text("Name des Rooms").foregroundColor(WatchdTheme.textTertiary))
+                        .font(WatchdTheme.body())
+                        .foregroundColor(WatchdTheme.textPrimary)
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 16)
+                        .background(WatchdTheme.backgroundInput)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .padding(.horizontal, 24)
+                        .padding(.top, 24)
+
+                    Text("Der neue Name wird auch für deinen Partner sichtbar.")
+                        .font(WatchdTheme.caption())
+                        .foregroundColor(WatchdTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+
+                    Spacer()
+                }
+            }
+            .navigationTitle("Name ändern")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(WatchdTheme.background, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { onDismiss() }
+                        .foregroundColor(WatchdTheme.textSecondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") { onSave() }
+                        .fontWeight(.semibold)
+                        .foregroundColor(WatchdTheme.primary)
+                }
+            }
+        }
     }
 }
 

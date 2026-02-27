@@ -4,10 +4,8 @@ struct MovieCardView: View {
     let movie: Movie
     let dragOffset: CGSize
     let isTopCard: Bool
-    @StateObject private var favoritesVM = FavoritesViewModel()
 
     @State private var isOverviewExpanded = false
-    @State private var isFavorite = false
 
     private var likeOpacity: Double {
         let progress = dragOffset.width / 100
@@ -23,25 +21,6 @@ struct MovieCardView: View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
                 posterImage(size: geo.size)
-
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button(action: { toggleFavorite() }) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.black.opacity(0.6))
-                                    .frame(width: 44, height: 44)
-
-                                Image(systemName: isFavorite ? "bookmark.fill" : "bookmark")
-                                    .font(.system(size: 18, weight: .medium))
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .padding(16)
-                    }
-                    Spacer()
-                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     Spacer()
@@ -72,17 +51,35 @@ struct MovieCardView: View {
                             }
                         }
 
-                        Text(movie.overview)
-                            .font(WatchdTheme.caption())
-                            .foregroundColor(.white.opacity(0.9))
-                            .lineLimit(isOverviewExpanded ? nil : 3)
-                            .padding(.top, 2)
-                            .animation(nil, value: isOverviewExpanded)
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    isOverviewExpanded.toggle()
+                        Group {
+                            if isOverviewExpanded {
+                                ScrollView {
+                                    Text(movie.overview)
+                                        .font(WatchdTheme.caption())
+                                        .foregroundColor(.white.opacity(0.9))
+                                        .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                 }
+                                .frame(maxHeight: 140)
+                                .scrollIndicators(.hidden)
+                                .transition(.opacity)
+                            } else {
+                                Text(movie.overview)
+                                    .font(WatchdTheme.caption())
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+                                    .lineLimit(3)
+                                    .transition(.opacity)
                             }
+                        }
+                        .animation(.spring(response: 0.58, dampingFraction: 0.8), value: isOverviewExpanded)
+                        .padding(.top, 2)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.58, dampingFraction: 0.8)) {
+                                isOverviewExpanded.toggle()
+                            }
+                        }
 
                         if !movie.streamingOptions.isEmpty {
                             StreamingPillsRow(options: movie.streamingOptions)
@@ -175,15 +172,6 @@ struct MovieCardView: View {
             .shadow(color: color.opacity(0.5), radius: 10, y: 4)
             .rotationEffect(.degrees(rotation))
     }
-
-    private func toggleFavorite() {
-        isFavorite.toggle()
-        Task {
-            await favoritesVM.toggleFavorite(movieId: movie.id)
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
-        }
-    }
 }
 
 // MARK: - Streaming Pills (Netflix-style)
@@ -204,13 +192,27 @@ struct StreamingPillsRow: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(displayOptions.prefix(5)) { option in
-                    Text(option.package.clearName)
-                        .font(WatchdTheme.labelUppercase())
-                        .foregroundColor(WatchdTheme.textPrimary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(WatchdTheme.overlayLight)
-                        .clipShape(Capsule())
+                    HStack(spacing: 6) {
+                        if let url = option.package.iconURL {
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case .success(let img):
+                                    img.resizable().scaledToFit()
+                                default:
+                                    Color.clear
+                                }
+                            }
+                            .frame(width: 20, height: 20)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        Text(option.package.clearName)
+                            .font(WatchdTheme.labelUppercase())
+                            .foregroundColor(WatchdTheme.textPrimary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(WatchdTheme.overlayLight)
+                    .clipShape(Capsule())
                 }
             }
         }

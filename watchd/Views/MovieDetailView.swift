@@ -1,7 +1,28 @@
 import SwiftUI
 
 struct MovieDetailView: View {
-    let match: Match
+    private let match: Match?
+    private let favorite: Favorite?
+
+    init(match: Match) {
+        self.match = match
+        self.favorite = nil
+    }
+
+    init(favorite: Favorite) {
+        self.match = nil
+        self.favorite = favorite
+    }
+
+    private var movie: MatchMovie {
+        match?.movie ?? favorite!.movie
+    }
+
+    private var streamingOptions: [StreamingOption] {
+        match?.streamingOptions ?? favorite!.streamingOptions
+    }
+
+    private var showMatchBadge: Bool { match != nil }
 
     var body: some View {
         ZStack {
@@ -14,7 +35,7 @@ struct MovieDetailView: View {
 
                     VStack(alignment: .leading, spacing: 24) {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text(match.movie.title)
+                            Text(movie.title)
                                 .font(WatchdTheme.titleLarge())
                                 .foregroundColor(WatchdTheme.textPrimary)
 
@@ -23,18 +44,19 @@ struct MovieDetailView: View {
                                     Image(systemName: "star.fill")
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundColor(WatchdTheme.rating)
-                                    Text(String(format: "%.1f", match.movie.voteAverage))
+                                    Text(String(format: "%.1f", movie.voteAverage))
                                         .font(WatchdTheme.bodyMedium())
                                         .foregroundColor(WatchdTheme.textSecondary)
                                 }
 
-                                if let year = match.movie.releaseYear {
+                                if let year = movie.releaseYear {
                                     Text(year)
                                         .font(WatchdTheme.body())
                                         .foregroundColor(WatchdTheme.textTertiary)
                                 }
 
-                                matchBadge
+                                if showMatchBadge { matchBadge }
+                                if favorite != nil { favoriteBadge }
                             }
                         }
 
@@ -47,7 +69,7 @@ struct MovieDetailView: View {
                                 .font(WatchdTheme.labelUppercase())
                                 .foregroundColor(WatchdTheme.textTertiary)
                                 .tracking(0.5)
-                            Text(match.movie.overview)
+                            Text(movie.overview)
                                 .font(WatchdTheme.body())
                                 .foregroundColor(WatchdTheme.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -73,18 +95,19 @@ struct MovieDetailView: View {
     @ViewBuilder
     private var heroPoster: some View {
         ZStack(alignment: .bottom) {
-            if let url = match.movie.posterURL {
+            if let url = movie.posterURL {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):
-                        image.resizable().scaledToFill()
+                        image
+                            .resizable()
+                            .scaledToFit()
                     default:
                         WatchdTheme.backgroundCard
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 420)
-                .clipped()
+                .frame(maxHeight: 420)
             } else {
                 WatchdTheme.backgroundCard
                     .frame(maxWidth: .infinity)
@@ -101,7 +124,6 @@ struct MovieDetailView: View {
                 endPoint: .bottom
             )
         }
-        .frame(height: 420)
     }
 
     private var matchBadge: some View {
@@ -118,15 +140,29 @@ struct MovieDetailView: View {
         .clipShape(Capsule())
     }
 
+    private var favoriteBadge: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "star.fill")
+                .font(.system(size: 11, weight: .semibold))
+            Text("Favorit")
+                .font(WatchdTheme.captionMedium())
+        }
+        .foregroundColor(WatchdTheme.rating)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(WatchdTheme.rating.opacity(0.2))
+        .clipShape(Capsule())
+    }
+
     private var streamingSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if !match.streamingOptions.isEmpty {
+            if !streamingOptions.isEmpty {
                 Text("WO SCHAUEN?")
                     .font(WatchdTheme.labelUppercase())
                     .foregroundColor(WatchdTheme.textTertiary)
                     .tracking(0.5)
 
-                StreamingBadgesGrid(options: match.streamingOptions)
+                StreamingBadgesGrid(options: streamingOptions)
             } else {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.circle.fill")

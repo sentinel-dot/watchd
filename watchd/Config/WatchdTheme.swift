@@ -42,8 +42,9 @@ enum WatchdTheme {
         LinearGradient(
             colors: [
                 .clear,
-                Color.black.opacity(0.4),
-                Color.black.opacity(0.85),
+                Color.black.opacity(0.45),
+                Color.black.opacity(0.7),
+                Color.black.opacity(0.9),
                 background
             ],
             startPoint: .top,
@@ -60,6 +61,8 @@ enum WatchdTheme {
     }
     
     // Typography – Netflix-style weights
+    /// Logo-Titel (z. B. „WATCHD“) – wirkt großgeschrieben
+    static func logoTitle() -> Font { .system(size: 20, weight: .heavy, design: .rounded) }
     static func titleLarge() -> Font { .system(size: 28, weight: .bold) }
     static func titleMedium() -> Font { .system(size: 22, weight: .semibold) }
     static func titleSmall() -> Font { .system(size: 18, weight: .semibold) }

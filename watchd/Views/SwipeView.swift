@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SwipeView: View {
     @StateObject private var viewModel: SwipeViewModel
+    @StateObject private var favoritesVM = FavoritesViewModel()
+    @State private var justFavoritedFeedback = false
     @EnvironmentObject private var authVM: AuthViewModel
     @EnvironmentObject private var networkMonitor: NetworkMonitor
 
@@ -24,28 +26,7 @@ struct SwipeView: View {
 
                 Spacer(minLength: 40)
 
-                ZStack(alignment: .top) {
-                    cardStack
-
-                    if viewModel.swipeCount > 0 {
-                        HStack {
-                            Text("\(viewModel.swipeCount) Filme bewertet")
-                                .font(WatchdTheme.captionMedium())
-                                .foregroundColor(WatchdTheme.textSecondary)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(WatchdTheme.backgroundCard)
-                                .clipShape(Capsule())
-                                .overlay(
-                                    Capsule()
-                                        .stroke(WatchdTheme.separator, lineWidth: 1)
-                                )
-                            Spacer()
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.top, 8)
-                    }
-                }
+                cardStack
 
                 Spacer(minLength: 20)
 
@@ -54,11 +35,22 @@ struct SwipeView: View {
                     .padding(.bottom, 40)
             }
         }
-        .navigationTitle("watchd")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbarBackground(WatchdTheme.background, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("WATCHD")
+                    .font(WatchdTheme.logoTitle())
+                    .foregroundColor(WatchdTheme.textPrimary)
+            }
+            ToolbarItem(placement: .navigationBarLeading) {
+                if viewModel.swipeCount > 0 {
+                    Text("\(viewModel.swipeCount) bewertet")
+                        .font(WatchdTheme.captionMedium())
+                        .foregroundColor(WatchdTheme.textSecondary)
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink {
                     MatchesListView(roomId: viewModel.room.id)
@@ -81,6 +73,7 @@ struct SwipeView: View {
         }
         .task {
             await viewModel.fetchFeed()
+            await favoritesVM.loadFavorites()
             viewModel.startSocket()
         }
         .disabled(!networkMonitor.isConnected)
@@ -154,7 +147,8 @@ struct SwipeView: View {
     }
 
     private var actionButtons: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 24) {
+            // Ablehnen
             Button {
                 Task { await viewModel.handleDragEnd(CGSize(width: -150, height: 0)) }
             } label: {
@@ -166,7 +160,6 @@ struct SwipeView: View {
                             Circle()
                                 .stroke(WatchdTheme.separator, lineWidth: 1)
                         )
-
                     Image(systemName: "xmark")
                         .font(.system(size: 28, weight: .semibold))
                         .foregroundColor(WatchdTheme.textPrimary)
@@ -177,6 +170,63 @@ struct SwipeView: View {
 
             Spacer()
 
+            // Favorit (Mitte) – kleinerer Stern, weiche Animation, klares Feedback
+            Button {
+                guard let movie = viewModel.movies.first else { return }
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                if !favoritesVM.isFavorite(movieId: movie.id) {
+                    justFavoritedFeedback = true
+                    Task {
+                        try? await Task.sleep(nanoseconds: 800_000_000)
+                        await MainActor.run { justFavoritedFeedback = false }
+                    }
+                }
+                Task {
+                    await favoritesVM.toggleFavorite(movieId: movie.id)
+                }
+            } label: {
+                let isFav = favoritesVM.isFavorite(movieId: viewModel.movies.first?.id ?? 0)
+                ZStack {
+                    Circle()
+                        .fill(
+                            isFav
+                                ? WatchdTheme.rating.opacity(0.25)
+                                : WatchdTheme.backgroundCard
+                        )
+                        .frame(width: 56, height: 56)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    isFav ? WatchdTheme.rating : WatchdTheme.separator,
+                                    lineWidth: isFav ? 2 : 1
+                                )
+                        )
+                    Image(systemName: isFav ? "star.fill" : "star")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(isFav ? WatchdTheme.rating : WatchdTheme.textPrimary)
+                        .scaleEffect(justFavoritedFeedback ? 1.25 : 1.0)
+                }
+            }
+            .disabled(viewModel.movies.isEmpty)
+            .opacity(viewModel.movies.isEmpty ? 0.4 : 1.0)
+            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: favoritesVM.isFavorite(movieId: viewModel.movies.first?.id ?? 0))
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: justFavoritedFeedback)
+            .overlay(alignment: .top) {
+                if justFavoritedFeedback {
+                    Text("Favorisiert")
+                        .font(WatchdTheme.captionMedium())
+                        .foregroundColor(WatchdTheme.rating)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .offset(y: -36)
+                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                }
+            }
+
+            Spacer()
+
+            // Gefällt mir (Swipe Right)
             Button {
                 Task { await viewModel.handleDragEnd(CGSize(width: 150, height: 0)) }
             } label: {
@@ -184,7 +234,6 @@ struct SwipeView: View {
                     Circle()
                         .fill(WatchdTheme.primaryButtonGradient)
                         .frame(width: 72, height: 72)
-
                     Image(systemName: "heart.fill")
                         .font(.system(size: 28, weight: .semibold))
                         .foregroundColor(.white)

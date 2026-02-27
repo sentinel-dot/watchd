@@ -45,9 +45,26 @@ struct StreamingOption: Decodable, Identifiable {
 
 struct StreamingPackage: Decodable {
     let clearName: String
-    let icon: String
+    /// Wird vom Backend nicht mehr gesendet; Icon-URL wird aus clearName gebaut.
+    let icon: String?
 
-    var iconURL: URL? { URL(string: icon) }
+    /// URL zum Provider-Icon (Backend liefert Icons unter /icons/{slug}.png).
+    var iconURL: URL? {
+        let slug = Self.slug(for: clearName)
+        guard !slug.isEmpty else { return nil }
+        return URL(string: "\(APIConfig.iconsBaseURL)/icons/\(slug).png")
+    }
+
+    private static func slug(for clearName: String) -> String {
+        clearName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .unicodeScalars
+            .filter { CharacterSet.alphanumerics.contains($0) || $0 == "-" }
+            .map(String.init)
+            .joined()
+    }
 }
 
 struct MovieFeedResponse: Decodable {
