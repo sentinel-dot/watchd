@@ -4,18 +4,18 @@ struct LoadingView: View {
     var message: String = "Lädt..."
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             ProgressView()
                 .progressViewStyle(.circular)
-                .tint(Color(red: 0.85, green: 0.30, blue: 0.25))
-                .scaleEffect(1.2)
+                .tint(WatchdTheme.primary)
+                .scaleEffect(1.3)
             
             Text(message)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                .font(WatchdTheme.bodyMedium())
+                .foregroundColor(WatchdTheme.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+        .background(WatchdTheme.background)
     }
 }
 
@@ -27,46 +27,36 @@ struct EmptyStateView: View {
     var action: (() -> Void)?
     
     var body: some View {
-        VStack(spacing: 20) {
-            Text(icon)
-                .font(.system(size: 72))
-                .padding(.bottom, 8)
+        VStack(spacing: 24) {
+            Image(systemName: icon)
+                .font(.system(size: 56, weight: .light))
+                .foregroundColor(WatchdTheme.textTertiary)
             
             Text(title)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+                .font(WatchdTheme.titleSmall())
+                .foregroundColor(WatchdTheme.textPrimary)
             
             Text(message)
-                .font(.system(size: 15))
-                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                .font(WatchdTheme.body())
+                .foregroundColor(WatchdTheme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
             
             if let actionTitle = actionTitle, let action = action {
                 Button(action: action) {
                     Text(actionTitle)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(WatchdTheme.bodyMedium())
+                        .foregroundColor(WatchdTheme.textOnPrimary)
                         .padding(.horizontal, 32)
                         .padding(.vertical, 14)
-                        .background(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.85, green: 0.30, blue: 0.25),
-                                    Color(red: 0.90, green: 0.40, blue: 0.35)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .shadow(color: Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3), radius: 12, y: 6)
+                        .background(WatchdTheme.primaryButtonGradient)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .padding(.top, 8)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+        .background(WatchdTheme.background)
     }
 }
 
@@ -77,20 +67,21 @@ struct OfflineBanner: View {
                 .font(.system(size: 16, weight: .semibold))
             
             Text("Keine Internetverbindung")
-                .font(.system(size: 14, weight: .medium))
+                .font(WatchdTheme.bodyMedium())
             
             Spacer()
         }
         .foregroundColor(.white)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color(red: 0.85, green: 0.30, blue: 0.25))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(WatchdTheme.primary)
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 }
 
 #Preview("Loading") {
     LoadingView()
+        .preferredColorScheme(.dark)
 }
 
 #Preview("Empty State") {
@@ -101,11 +92,45 @@ struct OfflineBanner: View {
         actionTitle: "Los geht's",
         action: {}
     )
+    .preferredColorScheme(.dark)
+}
+
+// MARK: - Primary Button (Netflix CTA)
+
+struct PrimaryButton: View {
+    let title: String
+    let isLoading: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(.white)
+                } else {
+                    Text(title)
+                        .font(WatchdTheme.bodyMedium())
+                        .foregroundColor(WatchdTheme.textOnPrimary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(WatchdTheme.primaryButtonGradient)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .disabled(isLoading)
+    }
 }
 
 #Preview("Offline Banner") {
-    VStack {
-        OfflineBanner()
-        Spacer()
+    ZStack {
+        WatchdTheme.background.ignoresSafeArea()
+        VStack {
+            OfflineBanner()
+            Spacer()
+        }
     }
+    .preferredColorScheme(.dark)
 }

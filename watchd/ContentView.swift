@@ -11,7 +11,7 @@ struct ContentView: View {
                 NavigationStack {
                     HomeView()
                 }
-                .tint(Color(red: 0.85, green: 0.30, blue: 0.25))
+                .tint(WatchdTheme.primary)
                 .transition(.opacity)
             } else {
                 AuthView()

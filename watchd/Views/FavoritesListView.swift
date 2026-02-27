@@ -6,12 +6,11 @@ final class FavoritesViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showError = false
-    
+
     func loadFavorites() async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        
         do {
             let response = try await APIService.shared.getFavorites()
             favorites = response.favorites
@@ -20,7 +19,7 @@ final class FavoritesViewModel: ObservableObject {
             showError = true
         }
     }
-    
+
     func toggleFavorite(movieId: Int) async {
         do {
             if favorites.contains(where: { $0.movie.id == movieId }) {
@@ -35,7 +34,7 @@ final class FavoritesViewModel: ObservableObject {
             showError = true
         }
     }
-    
+
     func isFavorite(movieId: Int) -> Bool {
         favorites.contains { $0.movie.id == movieId }
     }
@@ -43,19 +42,11 @@ final class FavoritesViewModel: ObservableObject {
 
 struct FavoritesListView: View {
     @StateObject private var viewModel = FavoritesViewModel()
-    
+
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.98, green: 0.96, blue: 0.94),
-                    Color(red: 0.96, green: 0.93, blue: 0.90)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
+            WatchdTheme.background.ignoresSafeArea()
+
             if viewModel.isLoading && viewModel.favorites.isEmpty {
                 LoadingView(message: "Favoriten werden geladen...")
             } else if viewModel.favorites.isEmpty {
@@ -68,8 +59,8 @@ struct FavoritesListView: View {
                 List {
                     ForEach(viewModel.favorites) { favorite in
                         FavoriteRow(favorite: favorite, viewModel: viewModel)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
+                            .listRowBackground(WatchdTheme.backgroundCard)
+                            .listRowSeparator(.visible)
                             .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
                     }
                 }
@@ -79,6 +70,8 @@ struct FavoritesListView: View {
         }
         .navigationTitle("Favoriten")
         .navigationBarTitleDisplayMode(.large)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(WatchdTheme.background, for: .navigationBar)
         .alert("Fehler", isPresented: $viewModel.showError) {
             Button("OK") {}
         } message: {
@@ -96,7 +89,7 @@ struct FavoritesListView: View {
 private struct FavoriteRow: View {
     let favorite: Favorite
     @ObservedObject var viewModel: FavoritesViewModel
-    
+
     var body: some View {
         HStack(spacing: 16) {
             AsyncImage(url: favorite.movie.posterURL) { phase in
@@ -104,60 +97,47 @@ private struct FavoriteRow: View {
                 case .success(let image):
                     image.resizable().scaledToFill()
                 default:
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.9, green: 0.88, blue: 0.86),
-                            Color(red: 0.85, green: 0.82, blue: 0.80)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                    WatchdTheme.backgroundInput
                 }
             }
             .frame(width: 70, height: 100)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: Color.black.opacity(0.08), radius: 8, y: 4)
-            
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
             VStack(alignment: .leading, spacing: 8) {
                 Text(favorite.movie.title)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+                    .font(WatchdTheme.bodyMedium())
+                    .foregroundColor(WatchdTheme.textPrimary)
                     .lineLimit(2)
-                
+
                 HStack(spacing: 6) {
                     Image(systemName: "star.fill")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Color(red: 0.95, green: 0.77, blue: 0.20))
+                        .foregroundColor(WatchdTheme.rating)
                     Text(String(format: "%.1f", favorite.movie.voteAverage))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+                        .font(WatchdTheme.caption())
+                        .foregroundColor(WatchdTheme.textSecondary)
                     if let year = favorite.movie.releaseYear {
                         Text("•")
-                            .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.6))
+                            .foregroundColor(WatchdTheme.textTertiary)
                         Text(year)
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                            .font(WatchdTheme.caption())
+                            .foregroundColor(WatchdTheme.textTertiary)
                     }
                 }
             }
-            
+
             Spacer()
-            
+
             Button(action: {
-                Task {
-                    await viewModel.toggleFavorite(movieId: favorite.movie.id)
-                }
+                Task { await viewModel.toggleFavorite(movieId: favorite.movie.id) }
             }) {
                 Image(systemName: "bookmark.fill")
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
+                    .foregroundColor(WatchdTheme.primary)
             }
             .buttonStyle(.plain)
         }
-        .padding(16)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
+        .padding(14)
     }
 }
 
@@ -165,4 +145,5 @@ private struct FavoriteRow: View {
     NavigationStack {
         FavoritesListView()
     }
+    .preferredColorScheme(.dark)
 }

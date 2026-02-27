@@ -8,8 +8,11 @@ struct watchdApp: App {
     @State private var pendingRoomCode: String?
 
     init() {
-        UINavigationBar.appearance().tintColor = UIColor(red: 0.85, green: 0.30, blue: 0.25, alpha: 1)
-        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor: UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1)]
+        let netflixRed = UIColor(red: 0.898, green: 0.035, blue: 0.078, alpha: 1)
+        UINavigationBar.appearance().tintColor = netflixRed
+        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor: UIColor.white]
+        UINavigationBar.appearance().barTintColor = UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)
+        UINavigationBar.appearance().backgroundColor = UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)
     }
 
     var body: some Scene {
@@ -17,7 +20,7 @@ struct watchdApp: App {
             ContentView()
                 .environmentObject(authViewModel)
                 .environmentObject(networkMonitor)
-                .preferredColorScheme(.light)
+                .preferredColorScheme(.dark)
                 .onOpenURL { url in
                     handleDeepLink(url)
                 }

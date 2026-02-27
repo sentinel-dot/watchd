@@ -8,67 +8,10 @@ struct HomeView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.98, green: 0.96, blue: 0.94),
-                    Color(red: 0.96, green: 0.93, blue: 0.90)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            WatchdTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Hallo,")
-                            .font(.system(size: 32, weight: .light))
-                            .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
-                        
-                        Text(authVM.currentUser?.name ?? "du")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
-                        
-                        if let user = authVM.currentUser, user.isGuest {
-                            Text("Gast-Modus")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
-                                .padding(.top, 2)
-                        }
-                    }
-                    Spacer()
-                    
-                    Menu {
-                        if let user = authVM.currentUser, user.isGuest {
-                            Button(action: { viewModel.showUpgradeAccount = true }) {
-                                Label("Konto erstellen", systemImage: "arrow.up.circle")
-                            }
-                        }
-                        NavigationLink {
-                            ArchivedRoomsView()
-                        } label: {
-                            Label("Archivierte Rooms", systemImage: "archivebox")
-                        }
-                        Button(action: { authVM.logout() }) {
-                            Label("Abmelden", systemImage: "rectangle.portrait.and.arrow.right")
-                        }
-                    } label: {
-                        ZStack {
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 44, height: 44)
-                                .shadow(color: Color.black.opacity(0.08), radius: 12, y: 4)
-                            
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
-                        }
-                    }
-                }
-                .padding(.horizontal, 28)
-                .padding(.top, 20)
-                .padding(.bottom, 24)
+                header
 
                 if viewModel.isLoading && viewModel.rooms.isEmpty {
                     Spacer()
@@ -76,29 +19,9 @@ struct HomeView: View {
                     Spacer()
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 16) {
+                        LazyVStack(spacing: 14) {
                             if viewModel.rooms.isEmpty {
-                                VStack(spacing: 20) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color(red: 0.9, green: 0.88, blue: 0.86))
-                                            .frame(width: 100, height: 100)
-                                        Image(systemName: "popcorn")
-                                            .font(.system(size: 44, weight: .light))
-                                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                                    }
-                                    
-                                    VStack(spacing: 6) {
-                                        Text("Keine Rooms")
-                                            .font(.system(size: 20, weight: .semibold))
-                                            .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
-                                        Text("Erstelle einen neuen Room oder\ntritt einem bestehenden bei")
-                                            .font(.system(size: 14, weight: .regular))
-                                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                                            .multilineTextAlignment(.center)
-                                    }
-                                }
-                                .padding(.top, 100)
+                                emptyRooms
                             } else {
                                 ForEach(Array(viewModel.rooms.enumerated()), id: \.element.id) { index, room in
                                     RoomCard(
@@ -114,52 +37,20 @@ struct HomeView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, 28)
-                        .padding(.bottom, 180)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 160)
                     }
                 }
             }
-            
+
             if !networkMonitor.isConnected {
                 OfflineBanner()
                     .animation(.spring(), value: networkMonitor.isConnected)
             }
-            
+
             VStack {
                 Spacer()
-                
-                VStack(spacing: 0) {
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.98, green: 0.96, blue: 0.94).opacity(0),
-                            Color(red: 0.98, green: 0.96, blue: 0.94)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 60)
-                    
-                    HStack(spacing: 12) {
-                        FloatingActionButton(
-                            icon: "plus.circle.fill",
-                            title: "Erstellen",
-                            isLoading: viewModel.isLoading && viewModel.rooms.isEmpty
-                        ) {
-                            viewModel.showCreateRoomSheet = true
-                        }
-                        
-                        FloatingActionButton(
-                            icon: "person.2.fill",
-                            title: "Beitreten",
-                            isLoading: false
-                        ) {
-                            showJoinSheet = true
-                        }
-                    }
-                    .padding(.horizontal, 28)
-                    .padding(.bottom, 32)
-                    .background(Color(red: 0.98, green: 0.96, blue: 0.94))
-                }
+                bottomActions
             }
         }
         .navigationTitle("")
@@ -210,9 +101,102 @@ struct HomeView: View {
             await viewModel.loadRooms()
         }
     }
+
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Hallo,")
+                    .font(WatchdTheme.body())
+                    .foregroundColor(WatchdTheme.textSecondary)
+
+                Text(authVM.currentUser?.name ?? "du")
+                    .font(WatchdTheme.titleLarge())
+                    .foregroundColor(WatchdTheme.textPrimary)
+
+                if let user = authVM.currentUser, user.isGuest {
+                    Text("Gast-Modus")
+                        .font(WatchdTheme.captionMedium())
+                        .foregroundColor(WatchdTheme.primary)
+                        .padding(.top, 2)
+                }
+            }
+            Spacer()
+
+            Menu {
+                if let user = authVM.currentUser, user.isGuest {
+                    Button(action: { viewModel.showUpgradeAccount = true }) {
+                        Label("Konto erstellen", systemImage: "arrow.up.circle")
+                    }
+                }
+                NavigationLink {
+                    ArchivedRoomsView()
+                } label: {
+                    Label("Archivierte Rooms", systemImage: "archivebox")
+                }
+                Button(action: { authVM.logout() }) {
+                    Label("Abmelden", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(WatchdTheme.textPrimary)
+                    .frame(width: 44, height: 44)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 24)
+    }
+
+    private var emptyRooms: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "popcorn")
+                .font(.system(size: 56, weight: .light))
+                .foregroundColor(WatchdTheme.textTertiary)
+
+            VStack(spacing: 8) {
+                Text("Keine Rooms")
+                    .font(WatchdTheme.titleSmall())
+                    .foregroundColor(WatchdTheme.textPrimary)
+                Text("Erstelle einen neuen Room oder\ntritt einem bestehenden bei")
+                    .font(WatchdTheme.caption())
+                    .foregroundColor(WatchdTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.top, 80)
+    }
+
+    private var bottomActions: some View {
+        VStack(spacing: 0) {
+            LinearGradient(
+                colors: [WatchdTheme.background.opacity(0), WatchdTheme.background],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 50)
+
+            HStack(spacing: 12) {
+                NetflixPrimaryButton(
+                    icon: "plus",
+                    title: "Erstellen",
+                    isLoading: viewModel.isLoading && viewModel.rooms.isEmpty
+                ) {
+                    viewModel.showCreateRoomSheet = true
+                }
+
+                NetflixSecondaryButton(icon: "person.2", title: "Beitreten") {
+                    showJoinSheet = true
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 34)
+            .background(WatchdTheme.background)
+        }
+    }
 }
 
-// MARK: - Room Card
+// MARK: - Room Card (Netflix-style)
 
 private struct RoomCard: View {
     let room: Room
@@ -221,95 +205,87 @@ private struct RoomCard: View {
     let onEditFilters: () -> Void
     let onLeave: () -> Void
     @State private var copied = false
-    @State private var showSettingsMenu = false
-    
+
     private var isInactive: Bool {
         guard let lastActivity = room.lastActivityAt else { return false }
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: lastActivity) else { return false }
         return Date().timeIntervalSince(date) > 14 * 24 * 60 * 60
     }
-    
+
     private var displayName: String {
-        if let name = room.name, !name.isEmpty {
-            return name
-        }
+        if let name = room.name, !name.isEmpty { return name }
         return "Room #\(userRoomNumber)"
     }
-    
+
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(displayName)
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
-                        
+                            .font(WatchdTheme.titleSmall())
+                            .foregroundColor(WatchdTheme.textPrimary)
+
                         Text("Code: \(room.code)")
-                            .font(.system(size: 13, weight: .medium, design: .monospaced))
-                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                        
+                            .font(WatchdTheme.captionMedium())
+                            .foregroundColor(WatchdTheme.textTertiary)
+
                         if let status = room.status {
                             Text(status == "active" ? "Aktiv" : status == "waiting" ? "Wartet auf Partner" : "Archiviert")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(status == "active" ? Color(red: 0.2, green: 0.7, blue: 0.3) : Color(red: 0.5, green: 0.5, blue: 0.5))
+                                .font(WatchdTheme.labelUppercase())
+                                .foregroundColor(status == "active" ? WatchdTheme.success : WatchdTheme.textTertiary)
                                 .padding(.top, 2)
                         }
                     }
-                    
+
                     Spacer()
-                    
+
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.7))
-                        .frame(width: 32, height: 32)
+                        .foregroundColor(WatchdTheme.textTertiary)
                 }
-                
+
                 HStack(spacing: 8) {
                     ShareLink(item: URL(string: "watchd://join/\(room.code)")!) {
                         HStack(spacing: 6) {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.system(size: 11, weight: .semibold))
                             Text("Teilen")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(WatchdTheme.captionMedium())
                         }
-                        .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Color(red: 0.9, green: 0.88, blue: 0.86))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .foregroundColor(WatchdTheme.textSecondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(WatchdTheme.backgroundInput)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
-                    
+
                     Spacer()
-                    
+
                     Menu {
-                        Button {
-                            onEditFilters()
-                        } label: {
+                        Button { onEditFilters() } label: {
                             Label("Filter", systemImage: "slider.horizontal.3")
                         }
-                        
-                        Button(role: .destructive) {
-                            onLeave()
-                        } label: {
+                        Button(role: .destructive) { onLeave() } label: {
                             Label("Verlassen", systemImage: "rectangle.portrait.and.arrow.right")
                         }
                     } label: {
                         Image(systemName: "gearshape")
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                            .frame(width: 32, height: 32)
+                            .foregroundColor(WatchdTheme.textSecondary)
+                            .frame(width: 36, height: 36)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.06), radius: 16, y: 6)
+            .padding(18)
+            .background(WatchdTheme.backgroundCard)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(WatchdTheme.separator, lineWidth: 1)
             )
             .opacity(isInactive ? 0.5 : 1.0)
         }
@@ -317,14 +293,14 @@ private struct RoomCard: View {
     }
 }
 
-// MARK: - Floating Action Button
+// MARK: - Netflix-style action buttons
 
-private struct FloatingActionButton: View {
+private struct NetflixPrimaryButton: View {
     let icon: String
     let title: String
     let isLoading: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -335,177 +311,44 @@ private struct FloatingActionButton: View {
                         .scaleEffect(0.9)
                 } else {
                     Image(systemName: icon)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                 }
-                
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(WatchdTheme.bodyMedium())
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.85, green: 0.30, blue: 0.25),
-                        Color(red: 0.90, green: 0.40, blue: 0.35)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3), radius: 16, y: 8)
+            .background(WatchdTheme.primaryButtonGradient)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .disabled(isLoading)
     }
 }
 
-// MARK: - Invite Code Card (legacy - kept for compatibility)
-
-private struct InviteCodeCard: View {
-    let room: Room
-    let onStart: () -> Void
-    @State private var copied = false
-
-    var body: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 8) {
-                Text("Raum erstellt")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                    .textCase(.uppercase)
-                    .tracking(1)
-
-                Text(room.code)
-                    .font(.system(size: 56, weight: .black, design: .monospaced))
-                    .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
-                    .tracking(12)
-
-                Text("Teile diesen Code mit einem Freund")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-            }
-            .padding(.top, 8)
-
-            HStack(spacing: 12) {
-                Button {
-                    UIPasteboard.general.string = room.code
-                    copied = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text(copied ? "Kopiert!" : "Kopieren")
-                            .font(.system(size: 15, weight: .semibold))
-                    }
-                    .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .shadow(color: Color.black.opacity(0.08), radius: 12, y: 4)
-                }
-
-                ShareLink(item: "Tritt meinem Watchd-Raum bei! Code: \(room.code)") {
-                    HStack(spacing: 6) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("Teilen")
-                            .font(.system(size: 15, weight: .semibold))
-                    }
-                    .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .shadow(color: Color.black.opacity(0.08), radius: 12, y: 4)
-                }
-            }
-
-            Button(action: onStart) {
-                Text("Swipen starten")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.85, green: 0.30, blue: 0.25),
-                                Color(red: 0.90, green: 0.40, blue: 0.35)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3), radius: 16, y: 8)
-            }
-        }
-        .padding(24)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.08), radius: 20, y: 10)
-        )
-    }
-}
-
-// MARK: - Action Card
-
-private struct ActionCard: View {
+private struct NetflixSecondaryButton: View {
     let icon: String
-    let iconColor: Color
     let title: String
-    let subtitle: String
-    let isLoading: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 18) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(iconColor.opacity(0.1))
-                        .frame(width: 60, height: 60)
-                    
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(iconColor)
-                    } else {
-                        Image(systemName: icon)
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(iconColor)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
-                    Text(subtitle)
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                        .multilineTextAlignment(.leading)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.7))
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(title)
+                    .font(WatchdTheme.bodyMedium())
             }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.06), radius: 16, y: 6)
+            .foregroundColor(WatchdTheme.textPrimary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(WatchdTheme.backgroundCard)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(WatchdTheme.separator, lineWidth: 1)
             )
         }
-        .disabled(isLoading)
     }
 }
 
@@ -519,49 +362,30 @@ private struct JoinRoomSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(red: 0.98, green: 0.96, blue: 0.94).ignoresSafeArea()
+                WatchdTheme.background.ignoresSafeArea()
 
                 VStack(spacing: 32) {
                     VStack(spacing: 16) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(red: 0.85, green: 0.30, blue: 0.25),
-                                            Color(red: 0.90, green: 0.40, blue: 0.35)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 90, height: 90)
-                                .shadow(color: Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3), radius: 20, y: 10)
-                            
-                            Image(systemName: "person.2.fill")
-                                .font(.system(size: 36, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                        .padding(.top, 20)
+                        Image(systemName: "person.2.fill")
+                            .font(.system(size: 44, weight: .medium))
+                            .foregroundColor(WatchdTheme.primary)
+                            .padding(.top, 20)
 
                         Text("Raum beitreten")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+                            .font(WatchdTheme.titleLarge())
+                            .foregroundColor(WatchdTheme.textPrimary)
                     }
 
                     VStack(spacing: 16) {
-                        TextField("", text: $viewModel.joinCode, prompt: Text("CODE").foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.7)))
-                            .font(.system(size: 32, weight: .bold, design: .monospaced))
+                        TextField("", text: $viewModel.joinCode, prompt: Text("CODE").foregroundColor(WatchdTheme.textTertiary))
+                            .font(.system(size: 28, weight: .bold, design: .monospaced))
                             .multilineTextAlignment(.center)
                             .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()
-                            .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+                            .foregroundColor(WatchdTheme.textPrimary)
                             .padding(.vertical, 20)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.white)
-                                    .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
-                            )
+                            .background(WatchdTheme.backgroundInput)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
                             .focused($focused)
                             .padding(.horizontal, 32)
 
@@ -577,8 +401,8 @@ private struct JoinRoomSheet: View {
 
                         if let msg = viewModel.errorMessage {
                             Text(msg)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
+                                .font(WatchdTheme.caption())
+                                .foregroundColor(WatchdTheme.primary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 32)
                         }
@@ -591,7 +415,7 @@ private struct JoinRoomSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") { isPresented = false }
-                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
+                        .foregroundColor(WatchdTheme.textSecondary)
                 }
             }
             .onAppear { focused = true }
@@ -604,5 +428,7 @@ private struct JoinRoomSheet: View {
     NavigationStack {
         HomeView()
             .environmentObject(AuthViewModel())
+            .environmentObject(NetworkMonitor())
     }
+    .preferredColorScheme(.dark)
 }

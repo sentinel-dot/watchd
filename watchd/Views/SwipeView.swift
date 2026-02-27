@@ -14,44 +14,39 @@ struct SwipeView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.98, green: 0.96, blue: 0.94),
-                    Color(red: 0.95, green: 0.93, blue: 0.90),
-                    Color(red: 0.92, green: 0.88, blue: 0.85)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            WatchdTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 if !networkMonitor.isConnected {
                     OfflineBanner()
                         .animation(.spring(), value: networkMonitor.isConnected)
                 }
-                
+
                 Spacer(minLength: 40)
-                
+
                 ZStack(alignment: .top) {
                     cardStack
-                    
+
                     if viewModel.swipeCount > 0 {
                         HStack {
                             Text("\(viewModel.swipeCount) Filme bewertet")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                                .padding(.horizontal, 16)
+                                .font(WatchdTheme.captionMedium())
+                                .foregroundColor(WatchdTheme.textSecondary)
+                                .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
-                                .background(Color.white.opacity(0.8))
+                                .background(WatchdTheme.backgroundCard)
                                 .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .stroke(WatchdTheme.separator, lineWidth: 1)
+                                )
                             Spacer()
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
                     }
                 }
-                
+
                 Spacer(minLength: 20)
 
                 actionButtons
@@ -61,20 +56,16 @@ struct SwipeView: View {
         }
         .navigationTitle("watchd")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(WatchdTheme.background, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink {
                     MatchesListView(roomId: viewModel.room.id)
                 } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color(red: 0.85, green: 0.30, blue: 0.25))
-                            .frame(width: 36, height: 36)
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(WatchdTheme.primary)
                 }
             }
         }
@@ -94,7 +85,6 @@ struct SwipeView: View {
         }
         .disabled(!networkMonitor.isConnected)
     }
-    // MARK: - Card Stack
 
     @ViewBuilder
     private var cardStack: some View {
@@ -103,31 +93,26 @@ struct SwipeView: View {
                 VStack(spacing: 16) {
                     ProgressView()
                         .progressViewStyle(.circular)
-                        .tint(Color(red: 0.85, green: 0.30, blue: 0.25))
+                        .tint(WatchdTheme.primary)
                         .scaleEffect(1.5)
                     Text("Filme werden geladen…")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
+                        .font(WatchdTheme.bodyMedium())
+                        .foregroundColor(WatchdTheme.textSecondary)
                 }
                 .frame(width: cardWidth, height: cardHeight)
             } else if viewModel.movies.isEmpty {
                 VStack(spacing: 20) {
-                    ZStack {
-                        Circle()
-                            .fill(Color(red: 0.9, green: 0.88, blue: 0.86))
-                            .frame(width: 100, height: 100)
-                        Image(systemName: "film.stack")
-                            .font(.system(size: 44, weight: .light))
-                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                    }
-                    
-                    VStack(spacing: 6) {
+                    Image(systemName: "film.stack")
+                        .font(.system(size: 56, weight: .light))
+                        .foregroundColor(WatchdTheme.textTertiary)
+
+                    VStack(spacing: 8) {
                         Text("Keine weiteren Filme")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+                            .font(WatchdTheme.titleSmall())
+                            .foregroundColor(WatchdTheme.textPrimary)
                         Text("Schau später nochmal vorbei")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                            .font(WatchdTheme.caption())
+                            .foregroundColor(WatchdTheme.textSecondary)
                     }
                 }
                 .frame(width: cardWidth, height: cardHeight)
@@ -151,14 +136,12 @@ struct SwipeView: View {
                     .animation(.interactiveSpring(response: 0.4, dampingFraction: 0.7), value: viewModel.dragOffset)
                     .gesture(isTop ? swipeGesture : nil)
                     .zIndex(isTop ? 1 : 0)
-                    .shadow(color: Color.black.opacity(isTop ? 0.15 : 0.08), radius: isTop ? 24 : 12, y: isTop ? 12 : 6)
+                    .shadow(color: .black.opacity(isTop ? 0.4 : 0.2), radius: isTop ? 24 : 12, y: isTop ? 12 : 6)
                 }
             }
         }
         .frame(width: cardWidth, height: cardHeight)
     }
-
-    // MARK: - Swipe Gesture
 
     private var swipeGesture: some Gesture {
         DragGesture(minimumDistance: 4)
@@ -170,49 +153,38 @@ struct SwipeView: View {
             }
     }
 
-    // MARK: - Action Buttons
-    
     private var actionButtons: some View {
-        HStack(spacing: 16) {
-            // Pass Button
+        HStack(spacing: 20) {
             Button {
                 Task { await viewModel.handleDragEnd(CGSize(width: -150, height: 0)) }
             } label: {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 28)
-                        .fill(Color.white)
+                    Circle()
+                        .fill(WatchdTheme.backgroundCard)
                         .frame(width: 72, height: 72)
-                        .shadow(color: Color.black.opacity(0.1), radius: 20, y: 8)
-                    
+                        .overlay(
+                            Circle()
+                                .stroke(WatchdTheme.separator, lineWidth: 1)
+                        )
+
                     Image(systemName: "xmark")
                         .font(.system(size: 28, weight: .semibold))
-                        .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
+                        .foregroundColor(WatchdTheme.textPrimary)
                 }
             }
             .disabled(viewModel.movies.isEmpty)
             .opacity(viewModel.movies.isEmpty ? 0.4 : 1.0)
 
             Spacer()
-            
-            // Like Button
+
             Button {
                 Task { await viewModel.handleDragEnd(CGSize(width: 150, height: 0)) }
             } label: {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 28)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.85, green: 0.30, blue: 0.25),
-                                    Color(red: 0.90, green: 0.40, blue: 0.35)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                    Circle()
+                        .fill(WatchdTheme.primaryButtonGradient)
                         .frame(width: 72, height: 72)
-                        .shadow(color: Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3), radius: 20, y: 8)
-                    
+
                     Image(systemName: "heart.fill")
                         .font(.system(size: 28, weight: .semibold))
                         .foregroundColor(.white)

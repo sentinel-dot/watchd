@@ -10,78 +10,58 @@ struct MatchView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Sophisticated light background
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.98, green: 0.96, blue: 0.94),
-                        Color(red: 0.96, green: 0.93, blue: 0.90)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                WatchdTheme.background.ignoresSafeArea()
 
                 ConfettiView()
 
                 ScrollView {
                     VStack(spacing: 0) {
-                        // Celebration header
-                        VStack(spacing: 12) {
+                        VStack(spacing: 14) {
                             Text("🎉")
-                                .font(.system(size: 72))
-                            
+                                .font(.system(size: 64))
+
                             Text("Es ist ein Match!")
-                                .font(.system(size: 42, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.25))
-                            
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .foregroundColor(WatchdTheme.primary)
+
                             Text("Ihr wollt beide diesen Film schauen")
-                                .font(.system(size: 16, weight: .regular))
-                                .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
+                                .font(WatchdTheme.body())
+                                .foregroundColor(WatchdTheme.textSecondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 40)
                         }
                         .padding(.top, 40)
                         .padding(.bottom, 36)
 
-                        // Movie poster
                         posterSection
                             .padding(.bottom, 28)
 
-                        // Streaming section
                         streamingSection
                             .padding(.bottom, 32)
 
-                        // Action buttons
                         VStack(spacing: 14) {
                             Button(action: onDismiss) {
                                 Text("Weiter swipen")
-                                    .font(.system(size: 17, weight: .semibold))
+                                    .font(WatchdTheme.bodyMedium())
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 18)
-                                    .background(
-                                        LinearGradient(
-                                            colors: [
-                                                Color(red: 0.85, green: 0.30, blue: 0.25),
-                                                Color(red: 0.90, green: 0.40, blue: 0.35)
-                                            ],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    .shadow(color: Color(red: 0.85, green: 0.30, blue: 0.25).opacity(0.3), radius: 20, y: 8)
+                                    .background(WatchdTheme.primaryButtonGradient)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
                             }
 
                             NavigationLink(destination: MatchesListView(roomId: roomId)) {
                                 Text("Alle Matches anzeigen")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+                                    .font(WatchdTheme.bodyMedium())
+                                    .foregroundColor(WatchdTheme.textPrimary)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 18)
-                                    .background(Color.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    .shadow(color: Color.black.opacity(0.06), radius: 16, y: 6)
+                                    .background(WatchdTheme.backgroundCard)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(WatchdTheme.separator, lineWidth: 1)
+                                    )
                             }
                         }
                         .padding(.horizontal, 28)
@@ -90,19 +70,19 @@ struct MatchView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(WatchdTheme.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: onDismiss) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                            .foregroundColor(WatchdTheme.textTertiary)
                             .font(.system(size: 24, weight: .medium))
                     }
                 }
             }
         }
     }
-
-    // MARK: - Poster Section
 
     private var posterSection: some View {
         VStack(spacing: 16) {
@@ -114,34 +94,30 @@ struct MatchView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(height: 320)
-                            .clipShape(RoundedRectangle(cornerRadius: 24))
-                            .shadow(color: Color.black.opacity(0.15), radius: 24, y: 12)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .shadow(color: .black.opacity(0.4), radius: 24, y: 12)
                     default:
-                        RoundedRectangle(cornerRadius: 24)
-                            .fill(Color.white)
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(WatchdTheme.backgroundCard)
                             .frame(width: 200, height: 320)
-                            .shadow(color: Color.black.opacity(0.08), radius: 20, y: 10)
                     }
                 }
             }
 
             Text(match.movieTitle)
-                .font(.system(size: 28, weight: .bold))
-                .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+                .font(WatchdTheme.titleMedium())
+                .foregroundColor(WatchdTheme.textPrimary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
         }
     }
 
-    // MARK: - Streaming Section
-
     private var streamingSection: some View {
         VStack(spacing: 16) {
             if !match.streamingOptions.isEmpty {
-                Text("Verfügbar bei")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                    .textCase(.uppercase)
+                Text("VERFÜGBAR BEI")
+                    .font(WatchdTheme.labelUppercase())
+                    .foregroundColor(WatchdTheme.textTertiary)
                     .tracking(0.5)
 
                 StreamingBadgesGrid(options: match.streamingOptions)
@@ -151,15 +127,15 @@ struct MatchView: View {
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(.system(size: 14, weight: .medium))
                     Text("Nicht auf Streaming-Diensten verfügbar")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(WatchdTheme.caption())
                 }
-                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                .foregroundColor(WatchdTheme.textTertiary)
             }
         }
     }
 }
 
-// MARK: - Streaming Badges Grid
+// MARK: - Streaming Badges Grid (Netflix-style)
 
 struct StreamingBadgesGrid: View {
     let options: [StreamingOption]
@@ -192,35 +168,36 @@ struct StreamingBadge: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 52, height: 52)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                 default:
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(Color(red: 0.9, green: 0.88, blue: 0.86))
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(WatchdTheme.backgroundInput)
                         .frame(width: 52, height: 52)
                         .overlay(
                             Image(systemName: "play.rectangle.fill")
-                                .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.6).opacity(0.4))
+                                .foregroundColor(WatchdTheme.textTertiary.opacity(0.5))
                         )
                 }
             }
 
             Text(option.package.clearName)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+                .font(WatchdTheme.labelUppercase())
+                .foregroundColor(WatchdTheme.textSecondary)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 12, y: 4)
+        .background(WatchdTheme.backgroundCard)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(WatchdTheme.separator, lineWidth: 1)
         )
     }
 }
 
-// MARK: - Confetti
+// MARK: - Confetti (Netflix red + accent colors)
 
 struct ConfettiView: View {
     private let particles: [ConfettiParticle] = (0..<120).map { _ in ConfettiParticle() }
@@ -264,12 +241,12 @@ struct ConfettiParticle {
     let startOffset: Double
 
     private static let colors: [Color] = [
-        Color(red: 0.85, green: 0.30, blue: 0.25),
-        Color(red: 0.95, green: 0.77, blue: 0.20),
-        Color(red: 0.20, green: 0.70, blue: 0.40),
+        WatchdTheme.primary,
+        WatchdTheme.rating,
+        WatchdTheme.success,
         Color(red: 0.30, green: 0.50, blue: 0.90),
         Color(red: 0.90, green: 0.40, blue: 0.60),
-        Color(red: 0.60, green: 0.35, blue: 0.75)
+        WatchdTheme.textSecondary
     ]
 
     init() {

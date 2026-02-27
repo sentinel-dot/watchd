@@ -6,56 +6,53 @@ struct RoomFiltersView: View {
     @State private var filters: RoomFilters
     @State private var isLoading = false
     @State private var errorMessage: String?
-    
+
     init(roomId: Int, currentFilters: RoomFilters?) {
         self.roomId = roomId
         self._filters = State(initialValue: currentFilters ?? RoomFilters())
     }
-    
+
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.98, green: 0.96, blue: 0.94)
-                    .ignoresSafeArea()
-                
+                WatchdTheme.background.ignoresSafeArea()
+
                 Form {
-                    Section("Genres") {
+                    Section {
                         ForEach(GenreOption.allCases) { genre in
                             Toggle(genre.name, isOn: Binding(
                                 get: { filters.genres?.contains(genre.id) == true },
                                 set: { isOn in
                                     if isOn {
-                                        if filters.genres == nil {
-                                            filters.genres = []
-                                        }
+                                        if filters.genres == nil { filters.genres = [] }
                                         filters.genres?.append(genre.id)
                                     } else {
                                         filters.genres?.removeAll { $0 == genre.id }
                                     }
                                 }
                             ))
+                            .tint(WatchdTheme.primary)
                         }
-                    }
-                    
-                    Section("Streaming-Dienste") {
+                    } header: { Text("Genres").foregroundColor(WatchdTheme.textSecondary) }
+
+                    Section {
                         ForEach(StreamingService.allCases) { service in
                             Toggle(service.name, isOn: Binding(
                                 get: { filters.streamingServices?.contains(service.id) == true },
                                 set: { isOn in
                                     if isOn {
-                                        if filters.streamingServices == nil {
-                                            filters.streamingServices = []
-                                        }
+                                        if filters.streamingServices == nil { filters.streamingServices = [] }
                                         filters.streamingServices?.append(service.id)
                                     } else {
                                         filters.streamingServices?.removeAll { $0 == service.id }
                                     }
                                 }
                             ))
+                            .tint(WatchdTheme.primary)
                         }
-                    }
-                    
-                    Section("Erscheinungsjahr") {
+                    } header: { Text("Streaming-Dienste").foregroundColor(WatchdTheme.textSecondary) }
+
+                    Section {
                         Picker("Ab Jahr", selection: Binding(
                             get: { filters.yearFrom ?? 1900 },
                             set: { filters.yearFrom = $0 }
@@ -65,9 +62,10 @@ struct RoomFiltersView: View {
                                 Text("Ab \(year)").tag(year)
                             }
                         }
-                    }
-                    
-                    Section("Bewertung") {
+                        .tint(WatchdTheme.primary)
+                    } header: { Text("Erscheinungsjahr").foregroundColor(WatchdTheme.textSecondary) }
+
+                    Section {
                         Picker("Mindestens", selection: Binding(
                             get: { filters.minRating ?? 0.0 },
                             set: { filters.minRating = $0 }
@@ -80,9 +78,10 @@ struct RoomFiltersView: View {
                             Text("≥ 7.5").tag(7.5)
                             Text("≥ 8.0").tag(8.0)
                         }
-                    }
-                    
-                    Section("Laufzeit") {
+                        .tint(WatchdTheme.primary)
+                    } header: { Text("Bewertung").foregroundColor(WatchdTheme.textSecondary) }
+
+                    Section {
                         Picker("Maximal", selection: Binding(
                             get: { filters.maxRuntime ?? 300 },
                             set: { filters.maxRuntime = $0 }
@@ -92,39 +91,45 @@ struct RoomFiltersView: View {
                             Text("≤ 120 Min").tag(120)
                             Text("≤ 150 Min").tag(150)
                         }
-                    }
-                    
+                        .tint(WatchdTheme.primary)
+                    } header: { Text("Laufzeit").foregroundColor(WatchdTheme.textSecondary) }
+
                     if let error = errorMessage {
                         Section {
                             Text(error)
-                                .foregroundColor(.red)
-                                .font(.system(size: 13))
+                                .foregroundColor(WatchdTheme.primary)
+                                .font(WatchdTheme.caption())
                         }
                     }
                 }
                 .scrollContentBackground(.hidden)
+                .foregroundColor(WatchdTheme.textPrimary)
             }
             .navigationTitle("Filter")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(WatchdTheme.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") { dismiss() }
+                        .foregroundColor(WatchdTheme.textSecondary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Anwenden") {
                         Task { await applyFilters() }
                     }
+                    .foregroundColor(WatchdTheme.primary)
                     .disabled(isLoading)
                 }
             }
         }
     }
-    
+
     private func applyFilters() async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        
+
         do {
             let _ = try await APIService.shared.updateRoomFilters(roomId: roomId, filters: filters)
             dismiss()
@@ -150,9 +155,9 @@ enum GenreOption: Int, CaseIterable, Identifiable {
     case thriller = 53
     case war = 10752
     case western = 37
-    
+
     var id: Int { rawValue }
-    
+
     var name: String {
         switch self {
         case .action: return "Action"
@@ -180,9 +185,9 @@ enum StreamingService: String, CaseIterable, Identifiable {
     case disneyPlus = "disney+"
     case appleTv = "apple-tv"
     case paramount = "paramount+"
-    
+
     var id: String { rawValue }
-    
+
     var name: String {
         switch self {
         case .netflix: return "Netflix"
@@ -196,4 +201,5 @@ enum StreamingService: String, CaseIterable, Identifiable {
 
 #Preview {
     RoomFiltersView(roomId: 1, currentFilters: nil)
+        .preferredColorScheme(.dark)
 }
