@@ -13,38 +13,34 @@ struct MatchesListView: View {
         ZStack {
             WatchdTheme.background.ignoresSafeArea()
 
-            if viewModel.isLoading {
-                LoadingView(message: "Matches werden geladen…")
-            } else if viewModel.matches.isEmpty {
-                VStack(spacing: 24) {
-                    Image(systemName: "heart.slash")
-                        .font(.system(size: 56, weight: .light))
-                        .foregroundColor(WatchdTheme.textTertiary)
-
-                    VStack(spacing: 8) {
-                        Text("Noch keine Matches")
-                            .font(WatchdTheme.titleSmall())
-                            .foregroundColor(WatchdTheme.textPrimary)
-                        Text("Weiter swipen für einen Match!")
-                            .font(WatchdTheme.caption())
-                            .foregroundColor(WatchdTheme.textSecondary)
-                    }
-                }
+            if viewModel.isLoading && viewModel.matches.isEmpty && !viewModel.hasLoadedOnce {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .scaleEffect(1.2)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List {
-                    ForEach(viewModel.matches) { match in
-                        NavigationLink {
-                            MovieDetailView(match: match)
-                        } label: {
-                            MatchRow(match: match)
+                ScrollView {
+                    LazyVStack(spacing: 14) {
+                        if viewModel.matches.isEmpty {
+                            emptyMatches
+                        } else {
+                            ForEach(viewModel.matches) { match in
+                                NavigationLink {
+                                    MovieDetailView(match: match)
+                                } label: {
+                                    MatchRow(match: match)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 0)
+                                .background(WatchdTheme.backgroundCard)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
                         }
-                        .listRowBackground(WatchdTheme.backgroundCard)
-                        .listRowSeparator(.visible)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
             }
         }
         .navigationTitle("Matches")
@@ -60,8 +56,33 @@ struct MatchesListView: View {
             await viewModel.fetchMatches()
         }
         .refreshable {
-            await viewModel.fetchMatches()
+            do {
+                await Task.detached { @MainActor in
+                    await viewModel.fetchMatches()
+                }.value
+            } catch is CancellationError {
+                // User hat Refresh abgebrochen – ignorieren
+            }
         }
+    }
+
+    private var emptyMatches: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "heart.slash")
+                .font(.system(size: 56, weight: .light))
+                .foregroundColor(WatchdTheme.textTertiary)
+
+            VStack(spacing: 8) {
+                Text("Noch keine Matches")
+                    .font(WatchdTheme.titleSmall())
+                    .foregroundColor(WatchdTheme.textPrimary)
+                Text("Weiter swipen für einen Match!")
+                    .font(WatchdTheme.caption())
+                    .foregroundColor(WatchdTheme.textSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 80)
     }
 }
 

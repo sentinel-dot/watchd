@@ -6,15 +6,28 @@ final class FavoritesViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showError = false
+    @Published var hasLoadedOnce = false
 
     func loadFavorites() async {
+        let start = ContinuousClock.now
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
         do {
             let response = try await APIService.shared.getFavorites()
             favorites = response.favorites
+            hasLoadedOnce = true
+            let elapsed = ContinuousClock.now - start
+            let minDuration: Duration = .milliseconds(450)
+            if elapsed < minDuration {
+                try? await Task.sleep(for: minDuration - elapsed)
+            }
+        } catch is CancellationError {
+            return
+        } catch let error as URLError where error.code == .cancelled {
+            return
         } catch {
+            hasLoadedOnce = true
             errorMessage = error.localizedDescription
             showError = true
         }
@@ -57,40 +70,34 @@ struct FavoritesListView: View {
         ZStack {
             WatchdTheme.background.ignoresSafeArea()
 
-            if viewModel.isLoading && viewModel.favorites.isEmpty {
-                LoadingView(message: "Favoriten werden geladen...")
-            } else if viewModel.favorites.isEmpty {
-                VStack(spacing: 24) {
-                    Image(systemName: "star")
-                        .font(.system(size: 56, weight: .light))
-                        .foregroundColor(WatchdTheme.textTertiary)
-
-                    VStack(spacing: 8) {
-                        Text("Keine Favoriten")
-                            .font(WatchdTheme.titleSmall())
-                            .foregroundColor(WatchdTheme.textPrimary)
-                        Text("Markiere Filme mit dem Stern als Favoriten, um sie hier zu sehen")
-                            .font(WatchdTheme.caption())
-                            .foregroundColor(WatchdTheme.textSecondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 40)
-                }
+            if viewModel.isLoading && viewModel.favorites.isEmpty && !viewModel.hasLoadedOnce {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .scaleEffect(1.2)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List {
-                    ForEach(viewModel.favorites) { favorite in
-                        NavigationLink {
-                            MovieDetailView(favorite: favorite)
-                        } label: {
-                            FavoriteRow(favorite: favorite, viewModel: viewModel)
+                ScrollView {
+                    LazyVStack(spacing: 14) {
+                        if viewModel.favorites.isEmpty {
+                            emptyFavorites
+                        } else {
+                            ForEach(viewModel.favorites) { favorite in
+                                NavigationLink {
+                                    MovieDetailView(favorite: favorite)
+                                } label: {
+                                    FavoriteRow(favorite: favorite, viewModel: viewModel)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 0)
+                                .background(WatchdTheme.backgroundCard)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
                         }
-                        .listRowBackground(WatchdTheme.backgroundCard)
-                        .listRowSeparator(.visible)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
             }
         }
         .navigationTitle("Favoriten")
@@ -106,8 +113,35 @@ struct FavoritesListView: View {
             await viewModel.loadFavorites()
         }
         .refreshable {
-            await viewModel.loadFavorites()
+            do {
+                await Task.detached { @MainActor in
+                    await viewModel.loadFavorites()
+                }.value
+            } catch is CancellationError {
+                // User hat Refresh abgebrochen – ignorieren
+            }
         }
+    }
+
+    private var emptyFavorites: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "star")
+                .font(.system(size: 56, weight: .light))
+                .foregroundColor(WatchdTheme.textTertiary)
+
+            VStack(spacing: 8) {
+                Text("Keine Favoriten")
+                    .font(WatchdTheme.titleSmall())
+                    .foregroundColor(WatchdTheme.textPrimary)
+                Text("Markiere Filme mit dem Stern als Favoriten, um sie hier zu sehen")
+                    .font(WatchdTheme.caption())
+                    .foregroundColor(WatchdTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 40)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 80)
     }
 }
 

@@ -13,9 +13,11 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 header
 
-                if viewModel.isLoading && viewModel.rooms.isEmpty {
+                if viewModel.isLoading && viewModel.rooms.isEmpty && !viewModel.hasLoadedOnce {
                     Spacer()
-                    LoadingView(message: "Rooms werden geladen...")
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(1.2)
                     Spacer()
                 } else {
                     ScrollView {
@@ -122,7 +124,13 @@ struct HomeView: View {
             await viewModel.loadRooms()
         }
         .refreshable {
-            await viewModel.loadRooms()
+            do {
+                await Task.detached { @MainActor in
+                    await viewModel.loadRooms()
+                }.value
+            } catch is CancellationError {
+                // User hat Refresh abgebrochen – ignorieren
+            }
         }
     }
 

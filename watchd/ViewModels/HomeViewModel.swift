@@ -19,6 +19,7 @@ final class HomeViewModel: ObservableObject {
     @Published var roomToLeave: Room?
     @Published var roomToRename: Room?
     @Published var renameRoomName: String = ""
+    @Published var hasLoadedOnce = false
 
     init() {
         setupDeepLinkListener()
@@ -38,6 +39,7 @@ final class HomeViewModel: ObservableObject {
     }
     
     func loadRooms() async {
+        let start = ContinuousClock.now
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -45,7 +47,18 @@ final class HomeViewModel: ObservableObject {
         do {
             let response = try await APIService.shared.getRooms()
             rooms = response.rooms.filter { $0.status != "dissolved" }
+            hasLoadedOnce = true
+            let elapsed = ContinuousClock.now - start
+            let minDuration: Duration = .milliseconds(450)
+            if elapsed < minDuration {
+                try? await Task.sleep(for: minDuration - elapsed)
+            }
+        } catch is CancellationError {
+            return
+        } catch let error as URLError where error.code == .cancelled {
+            return
         } catch {
+            hasLoadedOnce = true
             errorMessage = error.localizedDescription
             showError = true
         }

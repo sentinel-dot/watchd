@@ -9,8 +9,11 @@ struct ArchivedRoomsView: View {
             WatchdTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                if viewModel.isLoading && viewModel.archivedRooms.isEmpty {
-                    LoadingView(message: "Archivierte Rooms werden geladen...")
+                if viewModel.isLoading && viewModel.archivedRooms.isEmpty && !viewModel.hasLoadedOnce {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(1.2)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.archivedRooms.isEmpty {
                     VStack(spacing: 24) {
                         Image(systemName: "archivebox")
@@ -48,7 +51,13 @@ struct ArchivedRoomsView: View {
             await viewModel.loadArchivedRooms()
         }
         .refreshable {
-            await viewModel.loadArchivedRooms()
+            do {
+                await Task.detached { @MainActor in
+                    await viewModel.loadArchivedRooms()
+                }.value
+            } catch is CancellationError {
+                // User hat Refresh abgebrochen – ignorieren
+            }
         }
     }
 }
@@ -57,6 +66,7 @@ struct ArchivedRoomsView: View {
 final class ArchivedRoomsViewModel: ObservableObject {
     @Published var archivedRooms: [Room] = []
     @Published var isLoading = false
+    @Published var hasLoadedOnce = false
 
     func loadArchivedRooms() async {
         isLoading = true
@@ -64,7 +74,14 @@ final class ArchivedRoomsViewModel: ObservableObject {
         do {
             let response = try await APIService.shared.getRooms()
             archivedRooms = response.rooms.filter { $0.status == "dissolved" }
-        } catch {}
+            hasLoadedOnce = true
+        } catch is CancellationError {
+            return
+        } catch let error as URLError where error.code == .cancelled {
+            return
+        } catch {
+            hasLoadedOnce = true
+        }
     }
 }
 
