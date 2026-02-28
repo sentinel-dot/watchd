@@ -178,6 +178,11 @@ final class APIService {
         return try await request(path: "/rooms/\(roomId)/leave", method: "DELETE")
     }
 
+    func deleteFromArchive(roomId: Int) async throws {
+        struct DeleteArchiveResponse: Decodable { let deleted: Bool }
+        let _: DeleteArchiveResponse = try await request(path: "/rooms/\(roomId)/archive", method: "DELETE")
+    }
+
     // MARK: - Movies
 
     func getMovieFeed(roomId: Int, page: Int = 1) async throws -> MovieFeedResponse {

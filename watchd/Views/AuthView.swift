@@ -12,8 +12,8 @@ struct AuthView: View {
                 Spacer()
 
                 VStack(spacing: 20) {
-                    Text("watchd")
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                    Text("WATCHD")
+                        .font(WatchdTheme.displayTitle())
                         .foregroundColor(WatchdTheme.primary)
                     Text("Findet gemeinsam euren nächsten Film")
                         .font(WatchdTheme.body())
@@ -31,7 +31,7 @@ struct AuthView: View {
                 }) {
                     HStack(spacing: 8) {
                         Image(systemName: "person.crop.circle.dashed")
-                            .font(.system(size: 15, weight: .medium))
+                            .font(WatchdTheme.bodyMedium())
                         Text("Als Gast fortfahren")
                             .font(WatchdTheme.bodyMedium())
                     }
@@ -70,7 +70,7 @@ private struct LoginForm: View {
         VStack(spacing: 0) {
             VStack(spacing: 20) {
                 Text("Willkommen zurück")
-                    .font(WatchdTheme.titleMedium())
+                    .font(WatchdTheme.titleLarge())
                     .foregroundColor(WatchdTheme.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -165,8 +165,8 @@ private struct RegisterView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         VStack(spacing: 20) {
-                            Text("watchd")
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                            Text("WATCHD")
+                                .font(WatchdTheme.displayTitle())
                                 .foregroundColor(WatchdTheme.primary)
 
                             VStack(spacing: 6) {
@@ -240,7 +240,7 @@ private struct RegisterView: View {
                     Button(action: { dismiss() }) {
                         HStack(spacing: 6) {
                             Image(systemName: "chevron.left")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(WatchdTheme.chevron())
                             Text("Zurück")
                                 .font(WatchdTheme.body())
                         }
@@ -285,6 +285,7 @@ struct AuthField: View {
 
             if isSecure {
                 SecureField("", text: $text, prompt: Text(placeholder).foregroundColor(WatchdTheme.textTertiary))
+                    .font(WatchdTheme.body())
                     .foregroundColor(WatchdTheme.textPrimary)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -294,6 +295,7 @@ struct AuthField: View {
                     .optionallyFocused(focusState)
             } else {
                 TextField("", text: $text, prompt: Text(placeholder).foregroundColor(WatchdTheme.textTertiary))
+                    .font(WatchdTheme.body())
                     .foregroundColor(WatchdTheme.textPrimary)
                     .keyboardType(keyboardType)
                     .autocorrectionDisabled()

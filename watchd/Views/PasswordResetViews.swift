@@ -17,7 +17,7 @@ struct ForgotPasswordView: View {
                 VStack(spacing: 24) {
                     VStack(spacing: 12) {
                         Image(systemName: "lock.rotation")
-                            .font(.system(size: 52, weight: .medium))
+                            .font(WatchdTheme.iconLarge())
                             .foregroundColor(WatchdTheme.primary)
                         Text("Passwort vergessen?")
                             .font(WatchdTheme.titleLarge())
@@ -120,7 +120,7 @@ struct ResetPasswordView: View {
                 VStack(spacing: 24) {
                     VStack(spacing: 12) {
                         Image(systemName: "key.fill")
-                            .font(.system(size: 52, weight: .medium))
+                            .font(WatchdTheme.iconLarge())
                             .foregroundColor(WatchdTheme.primary)
                         Text("Neues Passwort")
                             .font(WatchdTheme.titleLarge())

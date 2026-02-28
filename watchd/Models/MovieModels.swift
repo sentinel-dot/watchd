@@ -45,11 +45,16 @@ struct StreamingOption: Decodable, Identifiable {
 
 struct StreamingPackage: Decodable {
     let clearName: String
-    /// Wird vom Backend nicht mehr gesendet; Icon-URL wird aus clearName gebaut.
+    /// Vom Backend gesendeter Pfad (z. B. /icons/rtl-plus.png); wird für iconURL genutzt.
+    let iconPath: String?
+    /// Legacy von JustWatch; wird ignoriert.
     let icon: String?
 
-    /// URL zum Provider-Icon (Backend liefert Icons unter /icons/{slug}.png).
+    /// URL zum Provider-Icon. Nutzt iconPath vom Backend, sonst Fallback aus clearName.
     var iconURL: URL? {
+        if let path = iconPath, !path.isEmpty {
+            return URL(string: "\(APIConfig.iconsBaseURL)\(path)")
+        }
         let slug = Self.slug(for: clearName)
         guard !slug.isEmpty else { return nil }
         return URL(string: "\(APIConfig.iconsBaseURL)/icons/\(slug).png")

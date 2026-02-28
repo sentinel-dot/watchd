@@ -60,9 +60,12 @@ enum WatchdTheme {
         )
     }
     
-    // Typography – Netflix-style weights
-    /// Logo-Titel (z. B. „WATCHD“) – wirkt großgeschrieben
+    // Typography – einheitliches System (alle .system, eine Schriftfamilie)
+    /// App-Name „watchd“ (Login, Register) – groß, bold, rounded
+    static func displayTitle() -> Font { .system(size: 36, weight: .bold, design: .rounded) }
+    /// Logo in Toolbar (z. B. „WATCHD“)
     static func logoTitle() -> Font { .system(size: 20, weight: .heavy, design: .rounded) }
+    /// Große Überschriften (Seitentitel)
     static func titleLarge() -> Font { .system(size: 28, weight: .bold) }
     static func titleMedium() -> Font { .system(size: 22, weight: .semibold) }
     static func titleSmall() -> Font { .system(size: 18, weight: .semibold) }
@@ -71,4 +74,23 @@ enum WatchdTheme {
     static func caption() -> Font { .system(size: 13, weight: .regular) }
     static func captionMedium() -> Font { .system(size: 12, weight: .medium) }
     static func labelUppercase() -> Font { .system(size: 11, weight: .semibold) }
+
+    // Spezial: Code-Eingabe (Raum-Code) – monospaced für Lesbarkeit
+    static func codeInput() -> Font { .system(size: 28, weight: .bold, design: .monospaced) }
+    /// Overlay-Badge (GEFÄLLT / NEIN) auf Karten
+    static func overlayBadge() -> Font { .system(size: 28, weight: .black, design: .rounded) }
+
+    // Icons – einheitliche Größen
+    static func iconLarge() -> Font { .system(size: 52, weight: .medium) }
+    static func iconMedium() -> Font { .system(size: 18, weight: .medium) }
+    static func iconSmall() -> Font { .system(size: 16, weight: .semibold) }
+    static func iconTiny() -> Font { .system(size: 11, weight: .semibold) }
+    /// Große dekorative Icons (Empty States, Platzhalter)
+    static func emptyStateIcon() -> Font { .system(size: 56, weight: .light) }
+    static func placeholderPosterIcon() -> Font { .system(size: 64, weight: .light) }
+    /// Chevron, Pfeile in Listen
+    static func chevron() -> Font { .system(size: 14, weight: .semibold) }
+    /// Kleine Inline-Icons (Stern, Herz in Listen)
+    static func inlineIconSmall() -> Font { .system(size: 12, weight: .semibold) }
+    static func inlineIconTiny() -> Font { .system(size: 11, weight: .medium) }
 }

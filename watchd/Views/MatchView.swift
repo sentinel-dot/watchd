@@ -18,10 +18,10 @@ struct MatchView: View {
                     VStack(spacing: 0) {
                         VStack(spacing: 14) {
                             Text("🎉")
-                                .font(.system(size: 64))
+                                .font(WatchdTheme.placeholderPosterIcon())
 
                             Text("Es ist ein Match!")
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .font(WatchdTheme.titleLarge())
                                 .foregroundColor(WatchdTheme.primary)
 
                             Text("Ihr wollt beide diesen Film schauen")
@@ -76,8 +76,8 @@ struct MatchView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: onDismiss) {
                         Image(systemName: "xmark.circle.fill")
+                            .font(WatchdTheme.titleMedium())
                             .foregroundColor(WatchdTheme.textTertiary)
-                            .font(.system(size: 24, weight: .medium))
                     }
                 }
             }
@@ -125,7 +125,7 @@ struct MatchView: View {
             } else {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.circle.fill")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(WatchdTheme.chevron())
                     Text("Nicht auf Streaming-Diensten verfügbar")
                         .font(WatchdTheme.caption())
                 }

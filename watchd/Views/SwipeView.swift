@@ -56,7 +56,7 @@ struct SwipeView: View {
                     MatchesListView(roomId: viewModel.room.id)
                 } label: {
                     Image(systemName: "heart.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(WatchdTheme.iconSmall())
                         .foregroundColor(WatchdTheme.primary)
                 }
             }
@@ -96,12 +96,12 @@ struct SwipeView: View {
             } else if viewModel.movies.isEmpty {
                 VStack(spacing: 20) {
                     Image(systemName: "film.stack")
-                        .font(.system(size: 56, weight: .light))
+                        .font(WatchdTheme.emptyStateIcon())
                         .foregroundColor(WatchdTheme.textTertiary)
 
                     VStack(spacing: 8) {
                         Text("Keine weiteren Filme")
-                            .font(WatchdTheme.titleSmall())
+                            .font(WatchdTheme.titleLarge())
                             .foregroundColor(WatchdTheme.textPrimary)
                         Text("Schau später nochmal vorbei")
                             .font(WatchdTheme.caption())
@@ -161,7 +161,7 @@ struct SwipeView: View {
                                 .stroke(WatchdTheme.separator, lineWidth: 1)
                         )
                     Image(systemName: "xmark")
-                        .font(.system(size: 28, weight: .semibold))
+                        .font(WatchdTheme.titleLarge())
                         .foregroundColor(WatchdTheme.textPrimary)
                 }
             }
@@ -203,7 +203,7 @@ struct SwipeView: View {
                                 )
                         )
                     Image(systemName: isFav ? "star.fill" : "star")
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(WatchdTheme.titleMedium())
                         .foregroundColor(isFav ? WatchdTheme.rating : WatchdTheme.textPrimary)
                         .scaleEffect(justFavoritedFeedback ? 1.25 : 1.0)
                 }
@@ -235,7 +235,7 @@ struct SwipeView: View {
                         .fill(WatchdTheme.primaryButtonGradient)
                         .frame(width: 72, height: 72)
                     Image(systemName: "heart.fill")
-                        .font(.system(size: 28, weight: .semibold))
+                        .font(WatchdTheme.titleLarge())
                         .foregroundColor(.white)
                 }
             }

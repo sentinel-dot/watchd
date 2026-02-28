@@ -69,12 +69,12 @@ struct MatchesListView: View {
     private var emptyMatches: some View {
         VStack(spacing: 24) {
             Image(systemName: "heart.slash")
-                .font(.system(size: 56, weight: .light))
+                .font(WatchdTheme.emptyStateIcon())
                 .foregroundColor(WatchdTheme.textTertiary)
 
             VStack(spacing: 8) {
                 Text("Noch keine Matches")
-                    .font(WatchdTheme.titleSmall())
+                    .font(WatchdTheme.titleLarge())
                     .foregroundColor(WatchdTheme.textPrimary)
                 Text("Weiter swipen für einen Match!")
                     .font(WatchdTheme.caption())
@@ -121,7 +121,7 @@ private struct MatchRow: View {
 
                 HStack(spacing: 6) {
                     Image(systemName: "star.fill")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(WatchdTheme.iconTiny())
                         .foregroundColor(WatchdTheme.rating)
                     Text(String(format: "%.1f", match.movie.voteAverage))
                         .font(WatchdTheme.caption())
@@ -153,7 +153,7 @@ private struct MatchRow: View {
                             .tint(WatchdTheme.textSecondary)
                     } else {
                         Image(systemName: isWatched ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 18, weight: .medium))
+                            .font(WatchdTheme.iconMedium())
                             .foregroundColor(isWatched ? WatchdTheme.success : WatchdTheme.textTertiary)
                     }
                 }

@@ -42,7 +42,7 @@ struct MovieDetailView: View {
                             HStack(spacing: 12) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "star.fill")
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(WatchdTheme.inlineIconSmall())
                                         .foregroundColor(WatchdTheme.rating)
                                     Text(String(format: "%.1f", movie.voteAverage))
                                         .font(WatchdTheme.bodyMedium())
@@ -129,7 +129,7 @@ struct MovieDetailView: View {
     private var matchBadge: some View {
         HStack(spacing: 5) {
             Image(systemName: "heart.fill")
-                .font(.system(size: 11, weight: .semibold))
+                .font(WatchdTheme.iconTiny())
             Text("Match")
                 .font(WatchdTheme.captionMedium())
         }
@@ -143,7 +143,7 @@ struct MovieDetailView: View {
     private var favoriteBadge: some View {
         HStack(spacing: 5) {
             Image(systemName: "star.fill")
-                .font(.system(size: 11, weight: .semibold))
+                .font(WatchdTheme.iconTiny())
             Text("Favorit")
                 .font(WatchdTheme.captionMedium())
         }
@@ -166,7 +166,7 @@ struct MovieDetailView: View {
             } else {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.circle.fill")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(WatchdTheme.chevron())
                     Text("Nicht auf Streaming-Diensten verfügbar")
                         .font(WatchdTheme.caption())
                 }

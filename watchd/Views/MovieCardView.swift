@@ -35,7 +35,7 @@ struct MovieCardView: View {
                         HStack(spacing: 8) {
                             HStack(spacing: 4) {
                                 Image(systemName: "star.fill")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(WatchdTheme.inlineIconSmall())
                                     .foregroundColor(WatchdTheme.rating)
                                 Text(String(format: "%.1f", movie.voteAverage))
                                     .font(WatchdTheme.captionMedium())
@@ -87,7 +87,7 @@ struct MovieCardView: View {
                         } else {
                             HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.circle.fill")
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(WatchdTheme.inlineIconTiny())
                                 Text("Nicht auf Streaming-Diensten verfügbar")
                                     .font(WatchdTheme.labelUppercase())
                             }
@@ -155,7 +155,7 @@ struct MovieCardView: View {
         ZStack {
             WatchdTheme.backgroundCard
             Image(systemName: "film")
-                .font(.system(size: 64, weight: .light))
+                .font(WatchdTheme.placeholderPosterIcon())
                 .foregroundColor(WatchdTheme.textTertiary.opacity(0.4))
         }
         .frame(width: size.width, height: size.height)
@@ -163,7 +163,7 @@ struct MovieCardView: View {
 
     private func overlayBadge(text: String, color: Color, rotation: Double) -> some View {
         Text(text)
-            .font(.system(size: 28, weight: .black, design: .rounded))
+            .font(WatchdTheme.overlayBadge())
             .foregroundColor(color)
             .padding(.horizontal, 18)
             .padding(.vertical, 8)

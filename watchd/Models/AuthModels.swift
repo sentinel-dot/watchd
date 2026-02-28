@@ -44,7 +44,7 @@ struct User: Decodable, Identifiable {
         case id, name, email
         case isGuest = "isGuest"
     }
-    
+
     init(id: Int, name: String, email: String?, isGuest: Bool) {
         self.id = id
         self.name = name

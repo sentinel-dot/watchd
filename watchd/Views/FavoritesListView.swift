@@ -126,12 +126,12 @@ struct FavoritesListView: View {
     private var emptyFavorites: some View {
         VStack(spacing: 24) {
             Image(systemName: "star")
-                .font(.system(size: 56, weight: .light))
+                .font(WatchdTheme.emptyStateIcon())
                 .foregroundColor(WatchdTheme.textTertiary)
 
             VStack(spacing: 8) {
                 Text("Keine Favoriten")
-                    .font(WatchdTheme.titleSmall())
+                    .font(WatchdTheme.titleLarge())
                     .foregroundColor(WatchdTheme.textPrimary)
                 Text("Markiere Filme mit dem Stern als Favoriten, um sie hier zu sehen")
                     .font(WatchdTheme.caption())
@@ -174,7 +174,7 @@ private struct FavoriteRow: View {
 
                 HStack(spacing: 6) {
                     Image(systemName: "star.fill")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(WatchdTheme.iconTiny())
                         .foregroundColor(WatchdTheme.rating)
                     Text(String(format: "%.1f", favorite.movie.voteAverage))
                         .font(WatchdTheme.caption())
@@ -206,7 +206,7 @@ private struct FavoriteRow: View {
                             .tint(WatchdTheme.textSecondary)
                     } else {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 18, weight: .medium))
+                            .font(WatchdTheme.iconMedium())
                             .foregroundColor(WatchdTheme.rating)
                     }
                 }

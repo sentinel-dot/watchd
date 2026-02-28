@@ -15,7 +15,7 @@ struct CreateRoomSheet: View {
                 VStack(spacing: 24) {
                     VStack(spacing: 16) {
                         Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 44, weight: .medium))
+                            .font(WatchdTheme.iconLarge())
                             .foregroundColor(WatchdTheme.primary)
                             .padding(.top, 20)
 
@@ -58,7 +58,7 @@ struct CreateRoomSheet: View {
                                 Spacer()
 
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(WatchdTheme.chevron())
                                     .foregroundColor(WatchdTheme.textTertiary)
                             }
                             .padding(.horizontal, 16)
@@ -140,86 +140,7 @@ struct CreateRoomFiltersView: View {
         NavigationView {
             ZStack {
                 WatchdTheme.background.ignoresSafeArea()
-
-                Form {
-                    Section {
-                        ForEach(GenreOption.allCases) { genre in
-                            Toggle(genre.name, isOn: Binding(
-                                get: { filters.genres?.contains(genre.id) == true },
-                                set: { isOn in
-                                    if isOn {
-                                        if filters.genres == nil { filters.genres = [] }
-                                        filters.genres?.append(genre.id)
-                                    } else {
-                                        filters.genres?.removeAll { $0 == genre.id }
-                                    }
-                                }
-                            ))
-                            .tint(WatchdTheme.primary)
-                        }
-                    } header: { Text("Genres").foregroundColor(WatchdTheme.textSecondary) }
-
-                    Section {
-                        ForEach(StreamingService.allCases) { service in
-                            Toggle(service.name, isOn: Binding(
-                                get: { filters.streamingServices?.contains(service.id) == true },
-                                set: { isOn in
-                                    if isOn {
-                                        if filters.streamingServices == nil { filters.streamingServices = [] }
-                                        filters.streamingServices?.append(service.id)
-                                    } else {
-                                        filters.streamingServices?.removeAll { $0 == service.id }
-                                    }
-                                }
-                            ))
-                            .tint(WatchdTheme.primary)
-                        }
-                    } header: { Text("Streaming-Dienste").foregroundColor(WatchdTheme.textSecondary) }
-
-                    Section {
-                        Picker("Ab Jahr", selection: Binding(
-                            get: { filters.yearFrom ?? 1900 },
-                            set: { filters.yearFrom = $0 == 1900 ? nil : $0 }
-                        )) {
-                            Text("Alle").tag(1900)
-                            ForEach([2000, 2010, 2015, 2020, 2022, 2024], id: \.self) { year in
-                                Text("Ab \(year)").tag(year)
-                            }
-                        }
-                        .tint(WatchdTheme.primary)
-                    } header: { Text("Erscheinungsjahr").foregroundColor(WatchdTheme.textSecondary) }
-
-                    Section {
-                        Picker("Mindestens", selection: Binding(
-                            get: { filters.minRating ?? 0.0 },
-                            set: { filters.minRating = $0 == 0.0 ? nil : $0 }
-                        )) {
-                            Text("Alle").tag(0.0)
-                            Text("≥ 5.0").tag(5.0)
-                            Text("≥ 6.0").tag(6.0)
-                            Text("≥ 6.5").tag(6.5)
-                            Text("≥ 7.0").tag(7.0)
-                            Text("≥ 7.5").tag(7.5)
-                            Text("≥ 8.0").tag(8.0)
-                        }
-                        .tint(WatchdTheme.primary)
-                    } header: { Text("Bewertung").foregroundColor(WatchdTheme.textSecondary) }
-
-                    Section {
-                        Picker("Maximal", selection: Binding(
-                            get: { filters.maxRuntime ?? 300 },
-                            set: { filters.maxRuntime = $0 == 300 ? nil : $0 }
-                        )) {
-                            Text("Alle").tag(300)
-                            Text("≤ 90 Min").tag(90)
-                            Text("≤ 120 Min").tag(120)
-                            Text("≤ 150 Min").tag(150)
-                        }
-                        .tint(WatchdTheme.primary)
-                    } header: { Text("Laufzeit").foregroundColor(WatchdTheme.textSecondary) }
-                }
-                .scrollContentBackground(.hidden)
-                .foregroundColor(WatchdTheme.textPrimary)
+                FilterOptionsView(filters: $filters, showResetButton: true)
             }
             .navigationTitle("Filter auswählen")
             .navigationBarTitleDisplayMode(.inline)

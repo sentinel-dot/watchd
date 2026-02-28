@@ -175,7 +175,7 @@ struct HomeView: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 18, weight: .medium))
+                    .font(WatchdTheme.iconMedium())
                     .foregroundColor(WatchdTheme.textPrimary)
                     .frame(width: 44, height: 44)
             }
@@ -188,12 +188,12 @@ struct HomeView: View {
     private var emptyRooms: some View {
         VStack(spacing: 24) {
             Image(systemName: "popcorn")
-                .font(.system(size: 56, weight: .light))
+                .font(WatchdTheme.emptyStateIcon())
                 .foregroundColor(WatchdTheme.textTertiary)
 
             VStack(spacing: 8) {
                 Text("Keine Rooms")
-                    .font(WatchdTheme.titleSmall())
+                    .font(WatchdTheme.titleLarge())
                     .foregroundColor(WatchdTheme.textPrimary)
                 Text("Erstelle einen neuen Room oder\ntritt einem bestehenden bei")
                     .font(WatchdTheme.caption())
@@ -280,7 +280,7 @@ private struct RoomCard: View {
                     Spacer()
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(WatchdTheme.chevron())
                         .foregroundColor(WatchdTheme.textTertiary)
                 }
 
@@ -288,7 +288,7 @@ private struct RoomCard: View {
                     ShareLink(item: URL(string: "watchd://join/\(room.code)")!) {
                         HStack(spacing: 6) {
                             Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(WatchdTheme.labelUppercase())
                             Text("Teilen")
                                 .font(WatchdTheme.captionMedium())
                         }
@@ -314,7 +314,7 @@ private struct RoomCard: View {
                         }
                     } label: {
                         Image(systemName: "gearshape")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(WatchdTheme.iconSmall())
                             .foregroundColor(WatchdTheme.textSecondary)
                             .frame(width: 36, height: 36)
                     }
@@ -378,7 +378,7 @@ private struct RenameRoomSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Speichern") { onSave() }
-                        .fontWeight(.semibold)
+                        .font(WatchdTheme.bodyMedium())
                         .foregroundColor(WatchdTheme.primary)
                 }
             }
@@ -404,7 +404,7 @@ private struct NetflixPrimaryButton: View {
                         .scaleEffect(0.9)
                 } else {
                     Image(systemName: icon)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(WatchdTheme.iconSmall())
                 }
                 Text(title)
                     .font(WatchdTheme.bodyMedium())
@@ -428,7 +428,7 @@ private struct NetflixSecondaryButton: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(WatchdTheme.iconSmall())
                 Text(title)
                     .font(WatchdTheme.bodyMedium())
             }
@@ -460,7 +460,7 @@ private struct JoinRoomSheet: View {
                 VStack(spacing: 32) {
                     VStack(spacing: 16) {
                         Image(systemName: "person.2.fill")
-                            .font(.system(size: 44, weight: .medium))
+                            .font(WatchdTheme.iconLarge())
                             .foregroundColor(WatchdTheme.primary)
                             .padding(.top, 20)
 
@@ -471,7 +471,7 @@ private struct JoinRoomSheet: View {
 
                     VStack(spacing: 16) {
                         TextField("", text: $viewModel.joinCode, prompt: Text("CODE").foregroundColor(WatchdTheme.textTertiary))
-                            .font(.system(size: 28, weight: .bold, design: .monospaced))
+                            .font(WatchdTheme.codeInput())
                             .multilineTextAlignment(.center)
                             .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()

@@ -29,11 +29,11 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 24) {
             Image(systemName: icon)
-                .font(.system(size: 56, weight: .light))
+                .font(WatchdTheme.emptyStateIcon())
                 .foregroundColor(WatchdTheme.textTertiary)
             
             Text(title)
-                .font(WatchdTheme.titleSmall())
+                .font(WatchdTheme.titleLarge())
                 .foregroundColor(WatchdTheme.textPrimary)
             
             Text(message)
@@ -64,7 +64,7 @@ struct OfflineBanner: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "wifi.slash")
-                .font(.system(size: 16, weight: .semibold))
+                .font(WatchdTheme.iconSmall())
             
             Text("Keine Internetverbindung")
                 .font(WatchdTheme.bodyMedium())

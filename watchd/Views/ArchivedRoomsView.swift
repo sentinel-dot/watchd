@@ -17,12 +17,12 @@ struct ArchivedRoomsView: View {
                 } else if viewModel.archivedRooms.isEmpty {
                     VStack(spacing: 24) {
                         Image(systemName: "archivebox")
-                            .font(.system(size: 56, weight: .light))
+                            .font(WatchdTheme.emptyStateIcon())
                             .foregroundColor(WatchdTheme.textTertiary)
 
                         VStack(spacing: 8) {
                             Text("Keine archivierten Rooms")
-                                .font(WatchdTheme.titleSmall())
+                                .font(WatchdTheme.titleLarge())
                                 .foregroundColor(WatchdTheme.textPrimary)
                             Text("Beendete Rooms erscheinen hier")
                                 .font(WatchdTheme.caption())
@@ -33,7 +33,9 @@ struct ArchivedRoomsView: View {
                     ScrollView {
                         LazyVStack(spacing: 14) {
                             ForEach(viewModel.archivedRooms) { room in
-                                ArchivedRoomCard(room: room)
+                                ArchivedRoomCard(room: room) {
+                                    Task { await viewModel.deleteFromArchive(room: room) }
+                                }
                             }
                         }
                         .padding(.horizontal, 20)
@@ -83,10 +85,22 @@ final class ArchivedRoomsViewModel: ObservableObject {
             hasLoadedOnce = true
         }
     }
+
+    func deleteFromArchive(room: Room) async {
+        archivedRooms.removeAll { $0.id == room.id }
+        do {
+            try await APIService.shared.deleteFromArchive(roomId: room.id)
+        } catch {
+            archivedRooms.insert(room, at: 0)
+        }
+    }
 }
 
 private struct ArchivedRoomCard: View {
     let room: Room
+    let onDelete: () -> Void
+
+    @State private var showDeleteConfirm = false
 
     private var formattedDate: String {
         let formatter = ISO8601DateFormatter()
@@ -100,7 +114,7 @@ private struct ArchivedRoomCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
+            HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     if let name = room.name, !name.isEmpty {
                         Text(name)
@@ -118,7 +132,7 @@ private struct ArchivedRoomCard: View {
 
                     HStack(spacing: 4) {
                         Image(systemName: "archivebox")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(WatchdTheme.inlineIconTiny())
                         Text("Archiviert")
                             .font(WatchdTheme.captionMedium())
                     }
@@ -133,6 +147,15 @@ private struct ArchivedRoomCard: View {
                 }
 
                 Spacer()
+
+                Button {
+                    showDeleteConfirm = true
+                } label: {
+                    Image(systemName: "trash")
+                        .font(WatchdTheme.inlineIconSmall())
+                        .foregroundColor(WatchdTheme.textTertiary)
+                }
+                .buttonStyle(.plain)
             }
 
             NavigationLink {
@@ -140,7 +163,7 @@ private struct ArchivedRoomCard: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "heart.fill")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(WatchdTheme.inlineIconSmall())
                     Text("Matches anzeigen")
                         .font(WatchdTheme.captionMedium())
                 }
@@ -159,6 +182,12 @@ private struct ArchivedRoomCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(WatchdTheme.separator, lineWidth: 1)
         )
+        .confirmationDialog("Room löschen?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Löschen", role: .destructive) { onDelete() }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Der Room wird aus deiner Archivliste entfernt.")
+        }
     }
 }
 

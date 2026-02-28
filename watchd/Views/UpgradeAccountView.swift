@@ -19,7 +19,7 @@ struct UpgradeAccountView: View {
                     VStack(spacing: 24) {
                         VStack(spacing: 12) {
                             Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 52, weight: .medium))
+                                .font(WatchdTheme.iconLarge())
                                 .foregroundColor(WatchdTheme.primary)
                             Text("Konto erstellen")
                                 .font(WatchdTheme.titleLarge())
@@ -120,7 +120,7 @@ private struct BenefitRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 18))
+                .font(WatchdTheme.iconMedium())
                 .foregroundColor(WatchdTheme.primary)
                 .frame(width: 24)
 
