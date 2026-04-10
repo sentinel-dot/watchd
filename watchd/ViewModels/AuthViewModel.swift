@@ -9,7 +9,7 @@ final class AuthViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    init() {
+    private init() {
         setupUnauthorizedListener()
         loadSession()
     }
@@ -110,19 +110,46 @@ final class AuthViewModel: ObservableObject {
     }
 
     func logout() {
+        Task {
+            await APIService.shared.serverLogout()
+        }
         SocketService.shared.disconnect()
         KeychainHelper.clearAll()
         currentUser = nil
         isAuthenticated = false
     }
-    
+
+    func deleteAccount() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            _ = try await APIService.shared.deleteAccount()
+            SocketService.shared.disconnect()
+            KeychainHelper.clearAll()
+            currentUser = nil
+            isAuthenticated = false
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func handleUnauthorized() {
-        logout()
-        errorMessage = "Session expired. Please log in again."
+        SocketService.shared.disconnect()
+        KeychainHelper.clearAll()
+        currentUser = nil
+        isAuthenticated = false
+        errorMessage = "Sitzung abgelaufen. Bitte melde dich erneut an."
     }
 
     private func persistSession(_ response: AuthResponse) {
         KeychainHelper.save(response.token, forKey: KeychainHelper.tokenKey)
+
+        if let refreshToken = response.refreshToken {
+            KeychainHelper.save(refreshToken, forKey: KeychainHelper.refreshTokenKey)
+        }
+
         KeychainHelper.save(String(response.user.id), forKey: KeychainHelper.userIdKey)
         KeychainHelper.save(response.user.name, forKey: KeychainHelper.userNameKey)
         

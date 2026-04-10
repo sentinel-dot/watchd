@@ -31,6 +31,7 @@ struct UpdateUserNameRequest: Encodable {
 
 struct AuthResponse: Decodable {
     let token: String
+    let refreshToken: String?
     let user: User
 }
 

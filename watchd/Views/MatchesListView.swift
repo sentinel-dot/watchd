@@ -35,6 +35,9 @@ struct MatchesListView: View {
                                 .padding(.horizontal, 0)
                                 .background(WatchdTheme.backgroundCard)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .task {
+                                    await viewModel.loadMoreIfNeeded(currentMatch: match)
+                                }
                             }
                         }
                     }
@@ -56,13 +59,7 @@ struct MatchesListView: View {
             await viewModel.fetchMatches()
         }
         .refreshable {
-            do {
-                await Task.detached { @MainActor in
-                    await viewModel.fetchMatches()
-                }.value
-            } catch is CancellationError {
-                // User hat Refresh abgebrochen – ignorieren
-            }
+            await viewModel.fetchMatches()
         }
     }
 
@@ -162,6 +159,10 @@ private struct MatchRow: View {
             .disabled(isUpdating)
         }
         .padding(14)
+        // Sync local state when parent model updates (e.g. after pull-to-refresh)
+        .onChange(of: match.isWatched) { _, newValue in
+            isWatched = newValue
+        }
     }
 
     private func toggleWatched() {

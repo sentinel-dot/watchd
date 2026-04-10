@@ -5,6 +5,7 @@ struct HomeView: View {
     @EnvironmentObject private var networkMonitor: NetworkMonitor
     @StateObject private var viewModel = HomeViewModel()
     @State private var showJoinSheet = false
+    @State private var showDeleteAccountConfirmation = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -120,17 +121,21 @@ struct HomeView: View {
         } message: {
             Text("Du kannst jederzeit über den Code oder Invite-Link zurückkommen.")
         }
+        .alert("Konto endgültig löschen?", isPresented: $showDeleteAccountConfirmation) {
+            Button("Abbrechen", role: .cancel) {}
+            Button("Konto löschen", role: .destructive) {
+                Task {
+                    await authVM.deleteAccount()
+                }
+            }
+        } message: {
+            Text("Alle deine Daten, Rooms, Matches und Favoriten werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.")
+        }
         .task {
             await viewModel.loadRooms()
         }
         .refreshable {
-            do {
-                await Task.detached { @MainActor in
-                    await viewModel.loadRooms()
-                }.value
-            } catch is CancellationError {
-                // User hat Refresh abgebrochen – ignorieren
-            }
+            await viewModel.loadRooms()
         }
     }
 
@@ -170,8 +175,40 @@ struct HomeView: View {
                 } label: {
                     Label("Archivierte Rooms", systemImage: "archivebox")
                 }
+
+                Divider()
+
+                NavigationLink {
+                    PrivacyPolicyView()
+                } label: {
+                    Label("Datenschutz", systemImage: "hand.raised")
+                }
+                NavigationLink {
+                    TermsOfServiceView()
+                } label: {
+                    Label("Nutzungsbedingungen", systemImage: "doc.text")
+                }
+                NavigationLink {
+                    ImpressumView()
+                } label: {
+                    Label("Impressum", systemImage: "building.columns")
+                }
+                NavigationLink {
+                    TMDBAttributionView()
+                } label: {
+                    Label("Datenquellen", systemImage: "info.circle")
+                }
+
+                Divider()
+
                 Button(action: { authVM.logout() }) {
                     Label("Abmelden", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+
+                Divider()
+
+                Button(role: .destructive, action: { showDeleteAccountConfirmation = true }) {
+                    Label("Konto löschen", systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -520,7 +557,7 @@ private struct JoinRoomSheet: View {
 #Preview {
     NavigationStack {
         HomeView()
-            .environmentObject(AuthViewModel())
+            .environmentObject(AuthViewModel.shared)
             .environmentObject(NetworkMonitor())
     }
     .preferredColorScheme(.dark)

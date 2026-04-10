@@ -5,6 +5,7 @@ struct KeychainHelper {
     static let service = "com.watchd.app"
 
     static let tokenKey = "jwt_token"
+    static let refreshTokenKey = "jwt_refresh_token"
     static let userIdKey = "user_id"
     static let userNameKey = "user_name"
     static let userEmailKey = "user_email"
@@ -49,6 +50,7 @@ struct KeychainHelper {
 
     static func clearAll() {
         delete(forKey: tokenKey)
+        delete(forKey: refreshTokenKey)
         delete(forKey: userIdKey)
         delete(forKey: userNameKey)
         delete(forKey: userEmailKey)

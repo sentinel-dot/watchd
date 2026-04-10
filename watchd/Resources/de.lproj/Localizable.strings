@@ -1,0 +1,154 @@
+/* 
+  Localizable.strings (German)
+  watchd
+
+  Central place for all user-facing strings.
+  Usage: String(localized: "key")
+*/
+
+// MARK: - General
+"app.name" = "WATCHD";
+"general.ok" = "OK";
+"general.cancel" = "Abbrechen";
+"general.save" = "Speichern";
+"general.delete" = "Löschen";
+"general.done" = "Fertig";
+"general.back" = "Zurück";
+"general.error" = "Fehler";
+"general.loading" = "Lädt...";
+"general.retry" = "Erneut versuchen";
+
+// MARK: - Auth
+"auth.welcome_back" = "Willkommen zurück";
+"auth.tagline" = "Findet gemeinsam euren nächsten Film";
+"auth.login" = "Anmelden";
+"auth.register" = "Registrieren";
+"auth.guest_login" = "Als Gast fortfahren";
+"auth.email" = "E-Mail";
+"auth.password" = "Passwort";
+"auth.password_confirm" = "Passwort bestätigen";
+"auth.password_min" = "Passwort (mind. 8 Zeichen)";
+"auth.name" = "Name";
+"auth.no_account" = "Noch kein Konto?";
+"auth.register_now" = "Jetzt registrieren";
+"auth.forgot_password" = "Passwort vergessen?";
+"auth.create_account" = "Konto erstellen";
+"auth.join_community" = "Werde Teil der watchd Community";
+"auth.logout" = "Abmelden";
+"auth.session_expired" = "Sitzung abgelaufen. Bitte melde dich erneut an.";
+"auth.passwords_mismatch" = "Passwörter stimmen nicht überein";
+"auth.password_too_short" = "Passwort muss mindestens 8 Zeichen lang sein";
+"auth.guest_mode" = "Gast-Modus";
+
+// MARK: - Home
+"home.hello" = "Hallo,";
+"home.no_rooms" = "Keine Rooms";
+"home.no_rooms_subtitle" = "Erstelle einen neuen Room oder\ntritt einem bestehenden bei";
+"home.create" = "Erstellen";
+"home.join" = "Beitreten";
+
+// MARK: - Rooms
+"room.create_title" = "Neuen Room erstellen";
+"room.join_title" = "Raum beitreten";
+"room.code_placeholder" = "CODE";
+"room.name_optional" = "Room-Name (optional)";
+"room.name_placeholder" = "z.B. Filmabend mit Lisa";
+"room.filters" = "Filter";
+"room.no_filters" = "Keine Filter ausgewählt";
+"room.leave" = "Verlassen";
+"room.leave_title" = "Room verlassen?";
+"room.leave_message" = "Du kannst jederzeit über den Code oder Invite-Link zurückkommen.";
+"room.share" = "Teilen";
+"room.rename" = "Name ändern";
+"room.status_active" = "Aktiv";
+"room.status_waiting" = "Wartet auf Partner";
+"room.status_archived" = "Archiviert";
+"room.enter_code" = "Bitte gib einen Einladungscode ein.";
+
+// MARK: - Swipe
+"swipe.loading" = "Filme werden geladen…";
+"swipe.no_more" = "Keine weiteren Filme";
+"swipe.check_later" = "Schau später nochmal vorbei";
+"swipe.rated_count" = "%d bewertet";
+"swipe.favorited" = "Favorisiert";
+
+// MARK: - Matches
+"matches.title" = "Matches";
+"matches.empty" = "Noch keine Matches";
+"matches.empty_subtitle" = "Weiter swipen für einen Match!";
+"matches.its_a_match" = "Es ist ein Match!";
+"matches.both_want" = "Ihr wollt beide diesen Film schauen";
+"matches.continue" = "Weiter swipen";
+"matches.show_all" = "Alle Matches anzeigen";
+
+// MARK: - Favorites
+"favorites.title" = "Favoriten";
+"favorites.empty" = "Keine Favoriten";
+"favorites.empty_subtitle" = "Markiere Filme mit dem Stern als Favoriten, um sie hier zu sehen";
+
+// MARK: - Streaming
+"streaming.available_at" = "VERFÜGBAR BEI";
+"streaming.not_available" = "Nicht auf Streaming-Diensten verfügbar";
+"streaming.where_to_watch" = "WO SCHAUEN?";
+
+// MARK: - Archive
+"archive.title" = "Archivierte Rooms";
+"archive.empty" = "Keine archivierten Rooms";
+"archive.empty_subtitle" = "Beendete Rooms erscheinen hier";
+"archive.delete_title" = "Room löschen?";
+"archive.delete_message" = "Der Room wird aus deiner Archivliste entfernt.";
+"archive.show_matches" = "Matches anzeigen";
+
+// MARK: - Account
+"account.delete_title" = "Konto endgültig löschen?";
+"account.delete_message" = "Alle deine Daten, Rooms, Matches und Favoriten werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.";
+"account.delete_button" = "Konto löschen";
+"account.upgrade_title" = "Konto erstellen";
+"account.upgrade_subtitle" = "Sichere deine Daten mit einem Konto";
+"account.benefits" = "Deine Vorteile:";
+"account.benefit_data" = "Deine Rooms und Matches bleiben erhalten";
+"account.benefit_reset" = "Passwort zurücksetzen möglich";
+"account.benefit_devices" = "Auf mehreren Geräten nutzbar";
+
+// MARK: - Password Reset
+"reset.forgot_title" = "Passwort vergessen?";
+"reset.forgot_subtitle" = "Wir senden dir einen Link zum Zurücksetzen";
+"reset.send_link" = "Link senden";
+"reset.new_password_title" = "Neues Passwort";
+"reset.new_password_subtitle" = "Wähle ein sicheres Passwort";
+"reset.change_password" = "Passwort ändern";
+"reset.email_sent" = "Falls diese E-Mail registriert ist, wurde ein Reset-Link gesendet.";
+"reset.enter_email" = "Bitte E-Mail eingeben";
+
+// MARK: - Filters
+"filters.title" = "Filter auswählen";
+"filters.genres" = "Genres";
+"filters.streaming" = "Streaming-Dienste";
+"filters.year" = "Erscheinungsjahr";
+"filters.rating" = "Mindestbewertung";
+"filters.runtime" = "Max. Laufzeit";
+"filters.active" = "Aktive Filter";
+"filters.none" = "Keine Filter – zeig alle Filme";
+"filters.reset" = "Alle zurücksetzen";
+
+// MARK: - Network
+"network.offline" = "Keine Internetverbindung";
+
+// MARK: - Legal
+"legal.privacy" = "Datenschutz";
+"legal.terms" = "Nutzungsbedingungen";
+"legal.imprint" = "Impressum";
+"legal.attribution" = "Datenquellen";
+"legal.agree_prefix" = "Mit der Registrierung stimmst du unseren";
+"legal.agree_and" = "und der";
+"legal.agree_suffix" = "zu.";
+
+// MARK: - Movie Detail
+"movie.content" = "INHALT";
+"movie.match_badge" = "Match";
+"movie.favorite_badge" = "Favorit";
+"movie.not_available" = "Nicht verfügbar";
+
+// MARK: - Errors
+"error.something_wrong" = "Etwas ist schiefgelaufen.";
+"error.internal" = "Interner Serverfehler";

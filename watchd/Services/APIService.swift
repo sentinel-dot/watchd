@@ -38,11 +38,15 @@ final class APIService {
 
     // MARK: - Generic Request
 
+    /// Whether a token refresh is currently in-flight (prevents parallel refreshes).
+    private var isRefreshing = false
+
     private func request<T: Decodable>(
         path: String,
         method: String = "GET",
         body: Encodable? = nil,
-        requiresAuth: Bool = true
+        requiresAuth: Bool = true,
+        isRetryAfterRefresh: Bool = false
     ) async throws -> T {
         guard let url = URL(string: APIConfig.baseURL + path) else {
             throw APIError.invalidURL
@@ -72,6 +76,18 @@ final class APIService {
             throw APIError.networkError(URLError(.badServerResponse))
         }
 
+        // Auto-refresh: on 401, try to refresh the access token once
+        if http.statusCode == 401 && requiresAuth && !isRetryAfterRefresh {
+            let refreshed = await attemptTokenRefresh()
+            if refreshed {
+                return try await request(path: path, method: method, body: body, requiresAuth: true, isRetryAfterRefresh: true)
+            }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: NSNotification.Name("unauthorizedError"), object: nil)
+            }
+            throw APIError.unauthorized
+        }
+
         if http.statusCode == 401 {
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: NSNotification.Name("unauthorizedError"), object: nil)
@@ -88,11 +104,39 @@ final class APIService {
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
-            let raw = String(data: data, encoding: .utf8) ?? "<non-utf8>"
-            print("❌ Decoding error for \(T.self) at \(path)")
-            print("❌ Raw response: \(raw)")
-            print("❌ Error: \(error)")
             throw APIError.decodingError(error)
+        }
+    }
+
+    /// Attempts to refresh the access token using the stored refresh token.
+    private func attemptTokenRefresh() async -> Bool {
+        guard !isRefreshing else { return false }
+        guard let refreshToken = KeychainHelper.load(forKey: KeychainHelper.refreshTokenKey) else { return false }
+
+        isRefreshing = true
+        defer { isRefreshing = false }
+
+        do {
+            struct RefreshBody: Encodable { let refreshToken: String }
+            struct RefreshResponse: Decodable { let token: String; let refreshToken: String; let user: User }
+
+            let body = RefreshBody(refreshToken: refreshToken)
+            guard let url = URL(string: APIConfig.baseURL + "/auth/refresh") else { return false }
+
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try encoder.encode(body)
+
+            let (data, response) = try await session.data(for: req)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { return false }
+
+            let refreshResponse = try decoder.decode(RefreshResponse.self, from: data)
+            KeychainHelper.save(refreshResponse.token, forKey: KeychainHelper.tokenKey)
+            KeychainHelper.save(refreshResponse.refreshToken, forKey: KeychainHelper.refreshTokenKey)
+            return true
+        } catch {
+            return false
         }
     }
 
@@ -202,8 +246,8 @@ final class APIService {
 
     // MARK: - Matches
 
-    func getMatches(roomId: Int) async throws -> MatchesResponse {
-        return try await request(path: "/matches/\(roomId)")
+    func getMatches(roomId: Int, limit: Int = 20, offset: Int = 0) async throws -> MatchesResponse {
+        return try await request(path: "/matches/\(roomId)?limit=\(limit)&offset=\(offset)")
     }
     
     func updateMatchWatched(matchId: Int, watched: Bool) async throws -> UpdateMatchResponse {
@@ -228,7 +272,20 @@ final class APIService {
         return try await request(path: "/matches/favorites/\(movieId)", method: "DELETE")
     }
     
-    func getFavorites() async throws -> FavoritesResponse {
-        return try await request(path: "/matches/favorites/list")
+    func getFavorites(limit: Int = 20, offset: Int = 0) async throws -> FavoritesResponse {
+        return try await request(path: "/matches/favorites/list?limit=\(limit)&offset=\(offset)")
+    }
+
+    // MARK: - Account Management
+
+    func serverLogout() async {
+        guard let refreshToken = KeychainHelper.load(forKey: KeychainHelper.refreshTokenKey) else { return }
+        struct LogoutBody: Encodable { let refreshToken: String }
+        let body = LogoutBody(refreshToken: refreshToken)
+        let _: MessageResponse? = try? await request(path: "/auth/logout", method: "POST", body: body, requiresAuth: false)
+    }
+
+    func deleteAccount() async throws -> MessageResponse {
+        return try await request(path: "/auth/delete-account", method: "DELETE")
     }
 }

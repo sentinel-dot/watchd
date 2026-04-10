@@ -222,6 +222,28 @@ private struct RegisterView: View {
                                 Task { await register() }
                             }
                             .padding(.top, 4)
+
+                            HStack(spacing: 4) {
+                                Text("Mit der Registrierung stimmst du unseren")
+                                    .font(WatchdTheme.caption())
+                                    .foregroundColor(WatchdTheme.textTertiary)
+                            }
+                            .padding(.top, 8)
+
+                            HStack(spacing: 4) {
+                                NavigationLink("Nutzungsbedingungen", destination: TermsOfServiceView())
+                                    .font(WatchdTheme.captionMedium())
+                                    .foregroundColor(WatchdTheme.primary)
+                                Text("und der")
+                                    .font(WatchdTheme.caption())
+                                    .foregroundColor(WatchdTheme.textTertiary)
+                                NavigationLink("Datenschutzerklärung", destination: PrivacyPolicyView())
+                                    .font(WatchdTheme.captionMedium())
+                                    .foregroundColor(WatchdTheme.primary)
+                            }
+                            Text("zu.")
+                                .font(WatchdTheme.caption())
+                                .foregroundColor(WatchdTheme.textTertiary)
                         }
                         .padding(.horizontal, 28)
                         .padding(.vertical, 32)
@@ -328,6 +350,6 @@ private extension View {
 
 #Preview {
     AuthView()
-        .environmentObject(AuthViewModel())
+        .environmentObject(AuthViewModel.shared)
         .preferredColorScheme(.dark)
 }

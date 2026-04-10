@@ -1,68 +1,5 @@
 import SwiftUI
 
-@MainActor
-final class FavoritesViewModel: ObservableObject {
-    @Published var favorites: [Favorite] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var showError = false
-    @Published var hasLoadedOnce = false
-
-    func loadFavorites() async {
-        let start = ContinuousClock.now
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-        do {
-            let response = try await APIService.shared.getFavorites()
-            favorites = response.favorites
-            hasLoadedOnce = true
-            let elapsed = ContinuousClock.now - start
-            let minDuration: Duration = .milliseconds(450)
-            if elapsed < minDuration {
-                try? await Task.sleep(for: minDuration - elapsed)
-            }
-        } catch is CancellationError {
-            return
-        } catch let error as URLError where error.code == .cancelled {
-            return
-        } catch {
-            hasLoadedOnce = true
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-    }
-
-    func toggleFavorite(movieId: Int) async {
-        do {
-            if favorites.contains(where: { $0.movie.id == movieId }) {
-                let _ = try await APIService.shared.removeFavorite(movieId: movieId)
-                favorites.removeAll { $0.movie.id == movieId }
-            } else {
-                let _ = try await APIService.shared.addFavorite(movieId: movieId)
-                await loadFavorites()
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-    }
-
-    func removeFavorite(movieId: Int) async {
-        do {
-            let _ = try await APIService.shared.removeFavorite(movieId: movieId)
-            favorites.removeAll { $0.movie.id == movieId }
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-    }
-
-    func isFavorite(movieId: Int) -> Bool {
-        favorites.contains { $0.movie.id == movieId }
-    }
-}
-
 struct FavoritesListView: View {
     @StateObject private var viewModel = FavoritesViewModel()
 
@@ -92,6 +29,9 @@ struct FavoritesListView: View {
                                 .padding(.horizontal, 0)
                                 .background(WatchdTheme.backgroundCard)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .task {
+                                    await viewModel.loadMoreIfNeeded(currentFavorite: favorite)
+                                }
                             }
                         }
                     }
@@ -113,13 +53,7 @@ struct FavoritesListView: View {
             await viewModel.loadFavorites()
         }
         .refreshable {
-            do {
-                await Task.detached { @MainActor in
-                    await viewModel.loadFavorites()
-                }.value
-            } catch is CancellationError {
-                // User hat Refresh abgebrochen – ignorieren
-            }
+            await viewModel.loadFavorites()
         }
     }
 

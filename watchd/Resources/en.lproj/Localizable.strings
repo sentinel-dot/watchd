@@ -1,0 +1,154 @@
+/* 
+  Localizable.strings (English - Base)
+  watchd
+
+  Central place for all user-facing strings.
+  Usage: String(localized: "key")
+*/
+
+// MARK: - General
+"app.name" = "WATCHD";
+"general.ok" = "OK";
+"general.cancel" = "Cancel";
+"general.save" = "Save";
+"general.delete" = "Delete";
+"general.done" = "Done";
+"general.back" = "Back";
+"general.error" = "Error";
+"general.loading" = "Loading...";
+"general.retry" = "Try again";
+
+// MARK: - Auth
+"auth.welcome_back" = "Welcome back";
+"auth.tagline" = "Find your next movie together";
+"auth.login" = "Sign in";
+"auth.register" = "Register";
+"auth.guest_login" = "Continue as guest";
+"auth.email" = "Email";
+"auth.password" = "Password";
+"auth.password_confirm" = "Confirm password";
+"auth.password_min" = "Password (min. 8 characters)";
+"auth.name" = "Name";
+"auth.no_account" = "Don't have an account?";
+"auth.register_now" = "Register now";
+"auth.forgot_password" = "Forgot password?";
+"auth.create_account" = "Create account";
+"auth.join_community" = "Join the watchd community";
+"auth.logout" = "Sign out";
+"auth.session_expired" = "Session expired. Please sign in again.";
+"auth.passwords_mismatch" = "Passwords do not match";
+"auth.password_too_short" = "Password must be at least 8 characters";
+"auth.guest_mode" = "Guest mode";
+
+// MARK: - Home
+"home.hello" = "Hello,";
+"home.no_rooms" = "No rooms";
+"home.no_rooms_subtitle" = "Create a new room or\njoin an existing one";
+"home.create" = "Create";
+"home.join" = "Join";
+
+// MARK: - Rooms
+"room.create_title" = "Create new room";
+"room.join_title" = "Join room";
+"room.code_placeholder" = "CODE";
+"room.name_optional" = "Room name (optional)";
+"room.name_placeholder" = "e.g. Movie night with Lisa";
+"room.filters" = "Filters";
+"room.no_filters" = "No filters selected";
+"room.leave" = "Leave";
+"room.leave_title" = "Leave room?";
+"room.leave_message" = "You can always come back using the code or invite link.";
+"room.share" = "Share";
+"room.rename" = "Rename";
+"room.status_active" = "Active";
+"room.status_waiting" = "Waiting for partner";
+"room.status_archived" = "Archived";
+"room.enter_code" = "Please enter an invitation code.";
+
+// MARK: - Swipe
+"swipe.loading" = "Loading movies…";
+"swipe.no_more" = "No more movies";
+"swipe.check_later" = "Check back later";
+"swipe.rated_count" = "%d rated";
+"swipe.favorited" = "Favorited";
+
+// MARK: - Matches
+"matches.title" = "Matches";
+"matches.empty" = "No matches yet";
+"matches.empty_subtitle" = "Keep swiping for a match!";
+"matches.its_a_match" = "It's a match!";
+"matches.both_want" = "You both want to watch this movie";
+"matches.continue" = "Continue swiping";
+"matches.show_all" = "Show all matches";
+
+// MARK: - Favorites
+"favorites.title" = "Favorites";
+"favorites.empty" = "No favorites";
+"favorites.empty_subtitle" = "Star movies to save them as favorites";
+
+// MARK: - Streaming
+"streaming.available_at" = "AVAILABLE ON";
+"streaming.not_available" = "Not available on streaming services";
+"streaming.where_to_watch" = "WHERE TO WATCH";
+
+// MARK: - Archive
+"archive.title" = "Archived rooms";
+"archive.empty" = "No archived rooms";
+"archive.empty_subtitle" = "Ended rooms will appear here";
+"archive.delete_title" = "Delete room?";
+"archive.delete_message" = "The room will be removed from your archive.";
+"archive.show_matches" = "Show matches";
+
+// MARK: - Account
+"account.delete_title" = "Permanently delete account?";
+"account.delete_message" = "All your data, rooms, matches and favorites will be permanently deleted. This action cannot be undone.";
+"account.delete_button" = "Delete account";
+"account.upgrade_title" = "Create account";
+"account.upgrade_subtitle" = "Secure your data with an account";
+"account.benefits" = "Your benefits:";
+"account.benefit_data" = "Your rooms and matches are preserved";
+"account.benefit_reset" = "Password reset available";
+"account.benefit_devices" = "Use on multiple devices";
+
+// MARK: - Password Reset
+"reset.forgot_title" = "Forgot password?";
+"reset.forgot_subtitle" = "We'll send you a reset link";
+"reset.send_link" = "Send link";
+"reset.new_password_title" = "New password";
+"reset.new_password_subtitle" = "Choose a secure password";
+"reset.change_password" = "Change password";
+"reset.email_sent" = "If this email is registered, a reset link has been sent.";
+"reset.enter_email" = "Please enter your email";
+
+// MARK: - Filters
+"filters.title" = "Choose filters";
+"filters.genres" = "Genres";
+"filters.streaming" = "Streaming services";
+"filters.year" = "Release year";
+"filters.rating" = "Minimum rating";
+"filters.runtime" = "Max. runtime";
+"filters.active" = "Active filters";
+"filters.none" = "No filters – show all movies";
+"filters.reset" = "Reset all";
+
+// MARK: - Network
+"network.offline" = "No internet connection";
+
+// MARK: - Legal
+"legal.privacy" = "Privacy policy";
+"legal.terms" = "Terms of service";
+"legal.imprint" = "Legal notice";
+"legal.attribution" = "Data sources";
+"legal.agree_prefix" = "By registering you agree to our";
+"legal.agree_and" = "and the";
+"legal.agree_suffix" = ".";
+
+// MARK: - Movie Detail
+"movie.content" = "OVERVIEW";
+"movie.match_badge" = "Match";
+"movie.favorite_badge" = "Favorite";
+"movie.not_available" = "Not available";
+
+// MARK: - Errors
+"error.something_wrong" = "Something went wrong.";
+"error.internal" = "Internal server error";

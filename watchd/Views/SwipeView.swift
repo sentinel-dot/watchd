@@ -6,33 +6,36 @@ struct SwipeView: View {
     @State private var justFavoritedFeedback = false
     @EnvironmentObject private var authVM: AuthViewModel
     @EnvironmentObject private var networkMonitor: NetworkMonitor
-
-    private let cardWidth: CGFloat = UIScreen.main.bounds.width - 48
-    private let cardHeight: CGFloat = UIScreen.main.bounds.height * 0.65
+    @Environment(\.scenePhase) private var scenePhase
 
     init(room: Room) {
         _viewModel = StateObject(wrappedValue: SwipeViewModel(room: room))
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            WatchdTheme.background.ignoresSafeArea()
+        GeometryReader { geometry in
+            let cardWidth = geometry.size.width - 48
+            let cardHeight = geometry.size.height * 0.65
 
-            VStack(spacing: 0) {
-                if !networkMonitor.isConnected {
-                    OfflineBanner()
-                        .animation(.spring(), value: networkMonitor.isConnected)
+            ZStack(alignment: .top) {
+                WatchdTheme.background.ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    if !networkMonitor.isConnected {
+                        OfflineBanner()
+                            .animation(.spring(), value: networkMonitor.isConnected)
+                    }
+
+                    Spacer(minLength: 40)
+
+                    cardStack(cardWidth: cardWidth, cardHeight: cardHeight)
+
+                    Spacer(minLength: 20)
+
+                    actionButtons
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 40)
                 }
-
-                Spacer(minLength: 40)
-
-                cardStack
-
-                Spacer(minLength: 20)
-
-                actionButtons
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 40)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -76,11 +79,16 @@ struct SwipeView: View {
             await favoritesVM.loadFavorites()
             viewModel.startSocket()
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                viewModel.reconnectSocketIfNeeded()
+            }
+        }
         .disabled(!networkMonitor.isConnected)
     }
 
     @ViewBuilder
-    private var cardStack: some View {
+    private func cardStack(cardWidth: CGFloat, cardHeight: CGFloat) -> some View {
         ZStack {
             if viewModel.isLoading && viewModel.movies.isEmpty {
                 VStack(spacing: 16) {

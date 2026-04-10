@@ -9,6 +9,10 @@ final class MatchesViewModel: ObservableObject {
     @Published var hasLoadedOnce = false
 
     let roomId: Int
+    private var currentOffset = 0
+    private var hasMore = true
+    private var isFetchingMore = false
+    private let pageSize = 20
 
     init(roomId: Int) {
         self.roomId = roomId
@@ -18,11 +22,15 @@ final class MatchesViewModel: ObservableObject {
         let start = ContinuousClock.now
         isLoading = true
         errorMessage = nil
+        currentOffset = 0
+        hasMore = true
         defer { isLoading = false }
 
         do {
-            let response = try await APIService.shared.getMatches(roomId: roomId)
+            let response = try await APIService.shared.getMatches(roomId: roomId, limit: pageSize, offset: 0)
             matches = response.matches
+            hasMore = response.pagination?.hasMore ?? false
+            currentOffset = response.matches.count
             hasLoadedOnce = true
             let elapsed = ContinuousClock.now - start
             let minDuration: Duration = .milliseconds(450)
@@ -37,6 +45,26 @@ final class MatchesViewModel: ObservableObject {
             hasLoadedOnce = true
             errorMessage = error.localizedDescription
             showError = true
+        }
+    }
+
+    func loadMoreIfNeeded(currentMatch: Match) async {
+        guard hasMore, !isFetchingMore else { return }
+        // Trigger when within last 5 items
+        let thresholdIndex = matches.index(matches.endIndex, offsetBy: -5, limitedBy: matches.startIndex) ?? matches.startIndex
+        guard let currentIndex = matches.firstIndex(where: { $0.id == currentMatch.id }),
+              currentIndex >= thresholdIndex else { return }
+
+        isFetchingMore = true
+        defer { isFetchingMore = false }
+
+        do {
+            let response = try await APIService.shared.getMatches(roomId: roomId, limit: pageSize, offset: currentOffset)
+            matches.append(contentsOf: response.matches)
+            hasMore = response.pagination?.hasMore ?? false
+            currentOffset += response.matches.count
+        } catch {
+            // Non-critical, will retry on next scroll
         }
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-struct Match: Decodable, Identifiable {
+struct Match: Decodable, Identifiable, Equatable {
     let id: Int
     let roomId: Int
     let matchedAt: String
@@ -9,6 +9,10 @@ struct Match: Decodable, Identifiable {
     let streamingOptions: [StreamingOption]
 
     var isWatched: Bool { watched ?? false }
+
+    static func == (lhs: Match, rhs: Match) -> Bool {
+        lhs.id == rhs.id && lhs.watched == rhs.watched
+    }
 }
 
 struct MatchMovie: Decodable {
@@ -31,8 +35,16 @@ struct MatchMovie: Decodable {
     }
 }
 
+struct PaginationInfo: Decodable {
+    let total: Int
+    let limit: Int
+    let offset: Int
+    let hasMore: Bool
+}
+
 struct MatchesResponse: Decodable {
     let matches: [Match]
+    let pagination: PaginationInfo?
 }
 
 struct UpdateMatchResponse: Decodable {
@@ -50,6 +62,7 @@ struct Favorite: Decodable, Identifiable {
 
 struct FavoritesResponse: Decodable {
     let favorites: [Favorite]
+    let pagination: PaginationInfo?
 }
 
 struct SocketMatchEvent: Decodable, Identifiable {

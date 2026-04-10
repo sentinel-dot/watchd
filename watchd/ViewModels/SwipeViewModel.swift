@@ -65,6 +65,13 @@ final class SwipeViewModel: ObservableObject {
         SocketService.shared.connect(token: token, roomId: room.id)
     }
 
+    func reconnectSocketIfNeeded() {
+        guard let token = KeychainHelper.load(forKey: KeychainHelper.tokenKey) else { return }
+        if !SocketService.shared.isConnected {
+            SocketService.shared.connect(token: token, roomId: room.id)
+        }
+    }
+
     // MARK: - Feed
 
     func fetchFeed() async {

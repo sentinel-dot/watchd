@@ -53,13 +53,7 @@ struct ArchivedRoomsView: View {
             await viewModel.loadArchivedRooms()
         }
         .refreshable {
-            do {
-                await Task.detached { @MainActor in
-                    await viewModel.loadArchivedRooms()
-                }.value
-            } catch is CancellationError {
-                // User hat Refresh abgebrochen – ignorieren
-            }
+            await viewModel.loadArchivedRooms()
         }
     }
 }
@@ -194,7 +188,7 @@ private struct ArchivedRoomCard: View {
 #Preview {
     NavigationStack {
         ArchivedRoomsView()
-            .environmentObject(AuthViewModel())
+            .environmentObject(AuthViewModel.shared)
     }
     .preferredColorScheme(.dark)
 }
