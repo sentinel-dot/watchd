@@ -170,12 +170,21 @@ final class AuthViewModel: ObservableObject {
         Task {
             let center = UNUserNotificationCenter.current()
             let settings = await center.notificationSettings()
-            guard settings.authorizationStatus == .notDetermined else { return }
-            let granted = try? await center.requestAuthorization(options: [.alert, .badge, .sound])
-            if granted == true {
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                // Permission already granted — re-register to get a fresh token
                 await MainActor.run {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
+            case .notDetermined:
+                let granted = try? await center.requestAuthorization(options: [.alert, .badge, .sound])
+                if granted == true {
+                    await MainActor.run {
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
+                }
+            default:
+                break
             }
         }
     }
