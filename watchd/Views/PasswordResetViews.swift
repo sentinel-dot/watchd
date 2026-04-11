@@ -7,7 +7,7 @@ struct ForgotPasswordView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
 
-    @FocusState private var isEmailFocused: Bool
+    @State private var isEmailFocused = false
 
     var body: some View {
         NavigationView {
@@ -33,8 +33,8 @@ struct ForgotPasswordView: View {
                         AuthField(
                             icon: "envelope.fill", placeholder: "E-Mail", text: $email,
                             keyboardType: .emailAddress, textContentType: .emailAddress,
-                            submitLabel: .send, onSubmit: { Task { await sendResetLink() } },
-                            focusState: $isEmailFocused
+                            returnKeyType: .send, onSubmit: { Task { await sendResetLink() } },
+                            isFocused: $isEmailFocused
                         )
 
                         if let error = errorMessage {
@@ -109,8 +109,8 @@ struct ResetPasswordView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
 
-    @FocusState private var isNewPasswordFocused: Bool
-    @FocusState private var isConfirmPasswordFocused: Bool
+    @State private var isNewPasswordFocused = false
+    @State private var isConfirmPasswordFocused = false
 
     var body: some View {
         NavigationView {
@@ -135,14 +135,14 @@ struct ResetPasswordView: View {
                         AuthField(
                             icon: "lock.fill", placeholder: "Neues Passwort", text: $newPassword,
                             isSecure: true, textContentType: .newPassword,
-                            submitLabel: .next, onSubmit: { isConfirmPasswordFocused = true },
-                            focusState: $isNewPasswordFocused
+                            returnKeyType: .next, onSubmit: { isConfirmPasswordFocused = true },
+                            isFocused: $isNewPasswordFocused
                         )
                         AuthField(
                             icon: "lock.fill", placeholder: "Passwort bestätigen", text: $confirmPassword,
                             isSecure: true, textContentType: .newPassword,
-                            submitLabel: .done, onSubmit: { Task { await resetPassword() } },
-                            focusState: $isConfirmPasswordFocused
+                            returnKeyType: .done, onSubmit: { Task { await resetPassword() } },
+                            isFocused: $isConfirmPasswordFocused
                         )
 
                         if let error = errorMessage {

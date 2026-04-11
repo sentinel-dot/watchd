@@ -62,9 +62,8 @@ private struct LoginForm: View {
     @State private var showForgotPassword = false
     let onRegisterTap: () -> Void
 
-    // Separate Bool focus states ensure .focused() lands directly on TextField/SecureField
-    @FocusState private var isEmailFocused: Bool
-    @FocusState private var isPasswordFocused: Bool
+    @State private var isEmailFocused = false
+    @State private var isPasswordFocused = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -78,15 +77,15 @@ private struct LoginForm: View {
                     AuthField(
                         icon: "envelope.fill", placeholder: "E-Mail", text: $email,
                         keyboardType: .emailAddress, textContentType: .emailAddress,
-                        submitLabel: .next, onSubmit: { isPasswordFocused = true },
-                        focusState: $isEmailFocused
+                        returnKeyType: .next, onSubmit: { isPasswordFocused = true },
+                        isFocused: $isEmailFocused
                     )
                     AuthField(
                         icon: "lock.fill", placeholder: "Passwort", text: $password,
                         isSecure: true, textContentType: .password,
-                        submitLabel: .go,
+                        returnKeyType: .go,
                         onSubmit: { Task { await authVM.login(email: email, password: password) } },
-                        focusState: $isPasswordFocused
+                        isFocused: $isPasswordFocused
                     )
                 }
 
@@ -152,10 +151,10 @@ private struct RegisterView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
 
-    @FocusState private var isNameFocused: Bool
-    @FocusState private var isEmailFocused: Bool
-    @FocusState private var isPasswordFocused: Bool
-    @FocusState private var isConfirmPasswordFocused: Bool
+    @State private var isNameFocused = false
+    @State private var isEmailFocused = false
+    @State private var isPasswordFocused = false
+    @State private var isConfirmPasswordFocused = false
 
     var body: some View {
         NavigationView {
@@ -186,27 +185,27 @@ private struct RegisterView: View {
                             AuthField(
                                 icon: "person.fill", placeholder: "Name", text: $name,
                                 textContentType: .name,
-                                submitLabel: .next, onSubmit: { isEmailFocused = true },
-                                focusState: $isNameFocused
+                                returnKeyType: .next, onSubmit: { isEmailFocused = true },
+                                isFocused: $isNameFocused
                             )
                             AuthField(
                                 icon: "envelope.fill", placeholder: "E-Mail", text: $email,
                                 keyboardType: .emailAddress, textContentType: .emailAddress,
-                                submitLabel: .next, onSubmit: { isPasswordFocused = true },
-                                focusState: $isEmailFocused
+                                returnKeyType: .next, onSubmit: { isPasswordFocused = true },
+                                isFocused: $isEmailFocused
                             )
                             AuthField(
                                 icon: "lock.fill", placeholder: "Passwort (mind. 8 Zeichen)", text: $password,
                                 isSecure: true, textContentType: .newPassword,
-                                submitLabel: .next, onSubmit: { isConfirmPasswordFocused = true },
-                                focusState: $isPasswordFocused
+                                returnKeyType: .next, onSubmit: { isConfirmPasswordFocused = true },
+                                isFocused: $isPasswordFocused
                             )
                             AuthField(
                                 icon: "lock.fill", placeholder: "Passwort bestätigen", text: $confirmPassword,
                                 isSecure: true, textContentType: .newPassword,
-                                submitLabel: .join,
+                                returnKeyType: .join,
                                 onSubmit: { Task { await register() } },
-                                focusState: $isConfirmPasswordFocused
+                                isFocused: $isConfirmPasswordFocused
                             )
 
                             if let msg = authVM.errorMessage {
@@ -295,9 +294,9 @@ struct AuthField: View {
     var keyboardType: UIKeyboardType = .default
     var isSecure: Bool = false
     var textContentType: UITextContentType? = nil
-    var submitLabel: SubmitLabel = .done
+    var returnKeyType: UIReturnKeyType = .done
     var onSubmit: (() -> Void)? = nil
-    var focusState: FocusState<Bool>.Binding? = nil
+    var isFocused: Binding<Bool>? = nil
 
     var body: some View {
         HStack(spacing: 14) {
@@ -305,28 +304,19 @@ struct AuthField: View {
                 .foregroundColor(WatchdTheme.textTertiary)
                 .frame(width: 20)
 
-            if isSecure {
-                SecureField("", text: $text, prompt: Text(placeholder).foregroundColor(WatchdTheme.textTertiary))
-                    .font(WatchdTheme.body())
-                    .foregroundColor(WatchdTheme.textPrimary)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .textContentType(textContentType)
-                    .submitLabel(submitLabel)
-                    .onSubmit { onSubmit?() }
-                    .optionallyFocused(focusState)
-            } else {
-                TextField("", text: $text, prompt: Text(placeholder).foregroundColor(WatchdTheme.textTertiary))
-                    .font(WatchdTheme.body())
-                    .foregroundColor(WatchdTheme.textPrimary)
-                    .keyboardType(keyboardType)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(keyboardType == .emailAddress ? .never : .words)
-                    .textContentType(textContentType)
-                    .submitLabel(submitLabel)
-                    .onSubmit { onSubmit?() }
-                    .optionallyFocused(focusState)
-            }
+            NativeTextField(
+                placeholder: placeholder,
+                text: $text,
+                keyboardType: keyboardType,
+                isSecure: isSecure,
+                textContentType: textContentType,
+                returnKeyType: returnKeyType,
+                uiFont: .systemFont(ofSize: 15),
+                textColor: UIColor(WatchdTheme.textPrimary),
+                placeholderColor: UIColor(WatchdTheme.textTertiary),
+                onSubmit: onSubmit,
+                isFocused: isFocused
+            )
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
@@ -335,18 +325,6 @@ struct AuthField: View {
     }
 }
 
-// MARK: - Focus Helper
-
-private extension View {
-    @ViewBuilder
-    func optionallyFocused(_ binding: FocusState<Bool>.Binding?) -> some View {
-        if let b = binding {
-            self.focused(b)
-        } else {
-            self
-        }
-    }
-}
 
 #Preview {
     AuthView()

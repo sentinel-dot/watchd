@@ -1,4 +1,6 @@
 import Foundation
+import UIKit
+import UserNotifications
 
 @MainActor
 final class AuthViewModel: ObservableObject {
@@ -161,5 +163,20 @@ final class AuthViewModel: ObservableObject {
         
         KeychainHelper.save(response.user.isGuest ? "true" : "false", forKey: KeychainHelper.isGuestKey)
         currentUser = response.user
+        requestPushPermissionIfNeeded()
+    }
+
+    private func requestPushPermissionIfNeeded() {
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let settings = await center.notificationSettings()
+            guard settings.authorizationStatus == .notDetermined else { return }
+            let granted = try? await center.requestAuthorization(options: [.alert, .badge, .sound])
+            if granted == true {
+                await MainActor.run {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            }
+        }
     }
 }

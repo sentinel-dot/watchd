@@ -12,6 +12,8 @@ final class SwipeViewModel: ObservableObject {
     @Published var showError = false
     @Published var errorMessage: String?
     @Published var swipeCount = 0
+    @Published var partnerLeft = false
+    @Published var roomDissolved = false
 
     let room: Room
     private var currentPage = 1
@@ -45,15 +47,15 @@ final class SwipeViewModel: ObservableObject {
         SocketService.shared.partnerLeftPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                // Partner has left - could show a notification
+                self?.partnerLeft = true
             }
             .store(in: &cancellables)
-        
+
         SocketService.shared.roomDissolvedPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] roomId in
                 guard let self = self, self.room.id == roomId else { return }
-                // Room was dissolved - could show a message
+                self.roomDissolved = true
             }
             .store(in: &cancellables)
     }
@@ -125,33 +127,42 @@ final class SwipeViewModel: ObservableObject {
     private func commitSwipe(direction: String) async {
         guard let movie = movies.first else { return }
         let swipedId = movie.id
+        let animationDuration: TimeInterval = 0.25
 
         let flyX: CGFloat = direction == "right" ? 600 : -600
-        withAnimation(.easeOut(duration: 0.25)) {
+        withAnimation(.easeOut(duration: animationDuration)) {
             dragOffset = CGSize(width: flyX, height: 50)
         }
 
         if direction == "right" {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
         } else {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }
 
-        try? await Task.sleep(nanoseconds: 250_000_000)
-
-        movies.removeFirst()
-        dragOffset = .zero
-        swipeCount += 1
-
-        if movies.count <= 5 {
-            Task { await fetchNextPage() }
-        }
+        let swipeStarted = Date()
 
         do {
             _ = try await APIService.shared.submitSwipe(movieId: swipedId, roomId: room.id, direction: direction)
+
+            // Ensure fly animation has finished before removing the card
+            let remaining = animationDuration - Date().timeIntervalSince(swipeStarted)
+            if remaining > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+            }
+
+            movies.removeFirst()
+            dragOffset = .zero
+            swipeCount += 1
+
+            if movies.count <= 5 {
+                Task { await fetchNextPage() }
+            }
         } catch {
+            // API failed — animate card back so the user can retry
+            withAnimation(.interactiveSpring()) {
+                dragOffset = .zero
+            }
             errorMessage = error.localizedDescription
             showError = true
         }

@@ -7,6 +7,7 @@ struct SwipeView: View {
     @EnvironmentObject private var authVM: AuthViewModel
     @EnvironmentObject private var networkMonitor: NetworkMonitor
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dismiss) private var dismiss
 
     init(room: Room) {
         _viewModel = StateObject(wrappedValue: SwipeViewModel(room: room))
@@ -73,6 +74,16 @@ struct SwipeView: View {
             Button("OK") {}
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+        .alert("Partner hat den Room verlassen", isPresented: $viewModel.partnerLeft) {
+            Button("OK") {}
+        } message: {
+            Text("Dein Partner hat den Room verlassen. Du kannst weiter swipen oder zurück zur Übersicht gehen.")
+        }
+        .alert("Room aufgelöst", isPresented: $viewModel.roomDissolved) {
+            Button("Zur Übersicht") { dismiss() }
+        } message: {
+            Text("Dieser Room wurde aufgelöst.")
         }
         .task {
             await viewModel.fetchFeed()

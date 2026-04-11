@@ -18,7 +18,7 @@ enum APIError: LocalizedError {
     }
 }
 
-final class APIService {
+actor APIService {
     static let shared = APIService()
 
     private let session: URLSession
@@ -176,6 +176,12 @@ final class APIService {
     func updateUserName(name: String) async throws -> UpdateUserResponse {
         let body = UpdateUserNameRequest(name: name)
         return try await request(path: "/users/me", method: "PATCH", body: body)
+    }
+
+    func registerDeviceToken(_ token: String) async throws {
+        struct Body: Encodable { let deviceToken: String }
+        struct Empty: Decodable {}
+        let _: Empty? = try? await request(path: "/users/me/device-token", method: "POST", body: Body(deviceToken: token))
     }
 
     // MARK: - Rooms

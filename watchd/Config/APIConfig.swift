@@ -1,7 +1,14 @@
 import Foundation
 
 enum APIConfig {
+    // Release-Builds (TestFlight, App Store) → immer Production-URL.
+    // Debug-Builds → lokale Entwicklung. Bei Tests auf physischem Gerät
+    // die LAN-IP des Macs eintragen (z. B. "http://192.168.1.42:3000").
+    #if DEBUG
+    private static let backendBaseURL = "http://localhost:3000"
+    #else
     private static let backendBaseURL = "https://watchd.up.railway.app"
+    #endif
 
     static var baseURL: String { "\(backendBaseURL)/api" }
     static var socketURL: String { backendBaseURL }

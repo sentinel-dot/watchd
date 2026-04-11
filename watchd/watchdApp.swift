@@ -1,8 +1,10 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 
 @main
 struct watchdApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authViewModel = AuthViewModel.shared
     @StateObject private var networkMonitor = NetworkMonitor()
     @State private var pendingRoomCode: String?
