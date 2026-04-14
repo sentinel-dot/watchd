@@ -123,13 +123,19 @@ struct MatchView: View {
                 StreamingBadgesGrid(options: match.streamingOptions)
                     .padding(.horizontal, 32)
             } else {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .font(WatchdTheme.chevron())
-                    Text("Nicht auf Streaming-Diensten verfügbar")
+                VStack(spacing: 8) {
+                    Image(systemName: "questionmark.circle.fill")
+                        .font(WatchdTheme.titleMedium())
+                        .foregroundColor(WatchdTheme.textTertiary)
+                    Text("Keine Streaming-Infos verfügbar")
+                        .font(WatchdTheme.bodyMedium())
+                        .foregroundColor(WatchdTheme.textSecondary)
+                    Text("Für diesen Film liegen aktuell keine Streaming-Daten vor.")
                         .font(WatchdTheme.caption())
+                        .foregroundColor(WatchdTheme.textTertiary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
                 }
-                .foregroundColor(WatchdTheme.textTertiary)
             }
         }
     }

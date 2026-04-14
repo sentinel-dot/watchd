@@ -26,12 +26,17 @@ struct watchdApp: App {
                 .onOpenURL { url in
                     handleDeepLink(url)
                 }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    guard let url = activity.webpageURL else { return }
+                    handleUniversalLink(url)
+                }
         }
     }
-    
+
+    // Handles watchd:// custom URL scheme (join links, legacy reset-password links)
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == "watchd" else { return }
-        
+
         if url.host == "join" || url.pathComponents.contains("join") {
             let code = url.pathComponents.last?.uppercased() ?? ""
             if !code.isEmpty && code.count == 6 {
@@ -46,12 +51,27 @@ struct watchdApp: App {
                 }
             }
         } else if url.host == "reset-password", let token = url.queryParameters?["token"] {
-            NotificationCenter.default.post(
-                name: NSNotification.Name("showResetPassword"),
-                object: nil,
-                userInfo: ["token": token]
-            )
+            postResetPasswordNotification(token: token)
         }
+    }
+
+    // Handles https:// Universal Links (e.g. https://watchd.up.railway.app/reset-password?token=…)
+    // iOS intercepts these before opening Safari when the Associated Domains entitlement is configured.
+    private func handleUniversalLink(_ url: URL) {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+        if components.path == "/reset-password",
+           let token = components.queryItems?.first(where: { $0.name == "token" })?.value,
+           !token.isEmpty {
+            postResetPasswordNotification(token: token)
+        }
+    }
+
+    private func postResetPasswordNotification(token: String) {
+        NotificationCenter.default.post(
+            name: NSNotification.Name("showResetPassword"),
+            object: nil,
+            userInfo: ["token": token]
+        )
     }
 }
 

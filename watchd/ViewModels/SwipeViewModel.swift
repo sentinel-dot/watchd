@@ -16,7 +16,7 @@ final class SwipeViewModel: ObservableObject {
     @Published var roomDissolved = false
 
     let room: Room
-    private var currentPage = 1
+    private var lastPosition = 0
     private var isFetching = false
     private var hasMorePages = true
     private var cancellables = Set<AnyCancellable>()
@@ -37,7 +37,7 @@ final class SwipeViewModel: ObservableObject {
                 guard let self = self else { return }
                 Task {
                     self.movies.removeAll()
-                    self.currentPage = 1
+                    self.lastPosition = 0
                     self.hasMorePages = true
                     await self.fetchFeed()
                 }
@@ -83,12 +83,12 @@ final class SwipeViewModel: ObservableObject {
         defer { isFetching = false; isLoading = false }
 
         do {
-            let response = try await APIService.shared.getMovieFeed(roomId: room.id, page: currentPage)
+            let response = try await APIService.shared.getMovieFeed(roomId: room.id, afterPosition: lastPosition)
             movies.append(contentsOf: response.movies)
             if response.movies.isEmpty {
                 hasMorePages = false
             } else {
-                currentPage += 1
+                lastPosition = response.lastPosition
             }
         } catch {
             errorMessage = error.localizedDescription

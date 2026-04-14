@@ -164,13 +164,19 @@ struct MovieDetailView: View {
 
                 StreamingBadgesGrid(options: streamingOptions)
             } else {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .font(WatchdTheme.chevron())
-                    Text("Nicht auf Streaming-Diensten verfügbar")
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "questionmark.circle.fill")
+                            .font(WatchdTheme.chevron())
+                            .foregroundColor(WatchdTheme.textTertiary)
+                        Text("Keine Streaming-Infos verfügbar")
+                            .font(WatchdTheme.bodyMedium())
+                            .foregroundColor(WatchdTheme.textSecondary)
+                    }
+                    Text("Für diesen Film liegen aktuell keine Streaming-Daten vor.")
                         .font(WatchdTheme.caption())
+                        .foregroundColor(WatchdTheme.textTertiary)
                 }
-                .foregroundColor(WatchdTheme.textTertiary)
             }
         }
     }

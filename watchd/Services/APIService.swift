@@ -235,8 +235,8 @@ actor APIService {
 
     // MARK: - Movies
 
-    func getMovieFeed(roomId: Int, page: Int = 1) async throws -> MovieFeedResponse {
-        return try await request(path: "/movies/feed?roomId=\(roomId)&page=\(page)")
+    func getMovieFeed(roomId: Int, afterPosition: Int = 0) async throws -> MovieFeedResponse {
+        return try await request(path: "/movies/feed?roomId=\(roomId)&afterPosition=\(afterPosition)")
     }
     
     func getNextMovie(roomId: Int) async throws -> NextMovieResponse {

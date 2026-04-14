@@ -73,8 +73,8 @@ struct StreamingPackage: Decodable {
 }
 
 struct MovieFeedResponse: Decodable {
-    let page: Int
     let movies: [Movie]
+    let lastPosition: Int
 }
 
 struct NextMovieResponse: Decodable {
