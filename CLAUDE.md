@@ -37,6 +37,8 @@ watchd/watchd/
 ├── Services/
 │   ├── APIService.swift      # actor — thread-safe async/await URLSession; Auto-refresh bei 401
 │   │                         # isRefreshing-Flag verhindert parallele Refreshes; Timeout: 30s
+│   │                         # URLError.cancelled + Task.isCancelled → CancellationError
+│   │                         # (sonst zeigt pull-to-refresh den „Abgebrochen"-Alert)
 │   ├── KeychainHelper.swift  # JWT + User-Info Storage via Security framework
 │   ├── NetworkMonitor.swift  # @MainActor ObservableObject; NWPathMonitor → @Published isConnected
 │   └── SocketService.swift   # @MainActor Singleton; Publishers: matchPublisher,
@@ -54,6 +56,12 @@ watchd/watchd/
 │   │                          # handleDrag + commitSwipe — 100pt Threshold, 0.25s fly-out
 │   │                          # Subscriptions: match, filtersUpdated, partnerLeft, roomDissolved
 │   │                          # reconnectSocketIfNeeded() beim App-Foreground
+│   │                          # Guest-Upgrade-Prompt: zählt Matches in UserDefaults
+│   │                          # pro userId (guestMatchesSinceLastPrompt_<userId>),
+│   │                          # triggert showUpgradePrompt wenn Gast + Counter ≥3
+│   │                          # + letzter Prompt ≥3 Tage her. Per-User-Namespacing
+│   │                          # verhindert dass der Zustand eines vorherigen Gast-
+│   │                          # Accounts den nächsten auf dem gleichen Gerät blockiert
 │   ├── MatchesViewModel.swift # fetchMatches() paginiert; mehr laden bei letzten 5; min 450ms
 │   └── FavoritesViewModel.swift # loadFavorites(), toggleFavorite(), removeFavorite(), isFavorite()
 │                                 # paginiert; mehr laden bei letzten 5; min 450ms
@@ -70,6 +78,8 @@ watchd/watchd/
     ├── RoomFiltersView.swift      # Filter-Editor für bestehenden Room → Stack neu generieren
     ├── ArchivedRoomsView.swift    # Liste + Hard-Delete archivierter Rooms
     ├── UpgradeAccountView.swift   # Guest → Vollkonto (Email + Password hinzufügen)
+    ├── GuestUpgradePromptSheet.swift # Sheet nach N Matches als Gast — "Jetzt sichern" /
+    │                                  # "Später"; ruft UpgradeAccountView bei Confirm
     ├── PasswordResetViews.swift   # Forgot-Password-Request + Reset via Deep-Link-Token
     ├── LegalView.swift            # Datenschutz / Impressum / AGB
     ├── NativeTextField.swift      # UIViewRepresentable Wrapper für bessere Keyboard-Handles
@@ -93,6 +103,10 @@ App Launch → ContentView
     │   ├── Right-Swipe → Matchmaking → Socket.io match → MatchView Modal
     │   │   └── MatchView: Konfetti + Streaming-Optionen
     │   │       ├── "Weiter swipen" → zurück zur SwipeView
+    │   │       │   └── (Gast, ≥3 Matches, Cooldown abgelaufen)
+    │   │       │       → GuestUpgradePromptSheet
+    │   │       │         ├── "Jetzt sichern" → UpgradeAccountView
+    │   │       │         └── "Später" → zurück zur SwipeView
     │   │       └── "Alle Matches" → MatchesListView
     │   ├── Herz-Button (Karte) → Favorit togglen
     │   ├── Toolbar-Herz → MatchesListView → MovieDetailView
@@ -103,6 +117,10 @@ App Launch → ContentView
     ├── Favoriten → FavoritesListView → MovieDetailView
     ├── Archivierte Rooms → ArchivedRoomsView
     └── Einstellungen: Name, Upgrade (Guest), Legal, Logout
+        └── Logout als Gast → 3-Button-Alert:
+            ├── "Konto sichern" → UpgradeAccountView
+            ├── "Trotzdem abmelden" → logout (destructive)
+            └── "Abbrechen"
 
 Deep Links:
   watchd://join/ROOMCODE              → auto-join (oder Code für Post-Login queuen)

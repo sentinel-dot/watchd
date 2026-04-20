@@ -14,6 +14,17 @@ final class SwipeViewModel: ObservableObject {
     @Published var swipeCount = 0
     @Published var partnerLeft = false
     @Published var roomDissolved = false
+    @Published var showUpgradePrompt = false
+
+    static let upgradePromptMatchThreshold = 3
+    static let upgradePromptCooldown: TimeInterval = 3 * 24 * 60 * 60
+
+    static func guestMatchCounterKey(for userId: Int) -> String {
+        "guestMatchesSinceLastPrompt_\(userId)"
+    }
+    static func guestLastPromptKey(for userId: Int) -> String {
+        "guestLastUpgradePromptAt_\(userId)"
+    }
 
     let room: Room
     private var lastPosition = 0
@@ -28,6 +39,7 @@ final class SwipeViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 self?.currentMatch = event
+                self?.registerMatchForUpgradePrompt()
             }
             .store(in: &cancellables)
         
@@ -170,5 +182,37 @@ final class SwipeViewModel: ObservableObject {
     
     private func fetchNextPage() async {
         await fetchFeed()
+    }
+
+    // MARK: - Guest Upgrade Prompt
+
+    private func registerMatchForUpgradePrompt() {
+        guard let user = AuthViewModel.shared.currentUser, user.isGuest else { return }
+        let defaults = UserDefaults.standard
+        let key = Self.guestMatchCounterKey(for: user.id)
+        let newCount = defaults.integer(forKey: key) + 1
+        defaults.set(newCount, forKey: key)
+    }
+
+    func maybeShowUpgradePromptAfterMatch() {
+        guard let user = AuthViewModel.shared.currentUser, user.isGuest else { return }
+        let defaults = UserDefaults.standard
+        let count = defaults.integer(forKey: Self.guestMatchCounterKey(for: user.id))
+        guard count >= Self.upgradePromptMatchThreshold else { return }
+
+        if let last = defaults.object(forKey: Self.guestLastPromptKey(for: user.id)) as? Date,
+           Date().timeIntervalSince(last) < Self.upgradePromptCooldown {
+            return
+        }
+
+        showUpgradePrompt = true
+    }
+
+    func dismissUpgradePrompt() {
+        showUpgradePrompt = false
+        guard let user = AuthViewModel.shared.currentUser, user.isGuest else { return }
+        let defaults = UserDefaults.standard
+        defaults.set(0, forKey: Self.guestMatchCounterKey(for: user.id))
+        defaults.set(Date(), forKey: Self.guestLastPromptKey(for: user.id))
     }
 }

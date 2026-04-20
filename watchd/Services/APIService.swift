@@ -69,6 +69,10 @@ actor APIService {
         do {
             (data, response) = try await session.data(for: req)
         } catch {
+            if Task.isCancelled { throw CancellationError() }
+            if let urlError = error as? URLError, urlError.code == .cancelled {
+                throw CancellationError()
+            }
             throw APIError.networkError(error)
         }
 

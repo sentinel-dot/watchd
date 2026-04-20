@@ -6,6 +6,7 @@ struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
     @State private var showJoinSheet = false
     @State private var showDeleteAccountConfirmation = false
+    @State private var showGuestLogoutAlert = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -119,7 +120,22 @@ struct HomeView: View {
                 }
             }
         } message: {
-            Text("Du kannst jederzeit über den Code oder Invite-Link zurückkommen.")
+            if viewModel.roomToLeave?.status == "active" {
+                Text("Dein Partner ist noch im Raum. Du kannst jederzeit über den Code oder Invite-Link zurückkommen.")
+            } else {
+                Text("Du bist alleine im Raum. Beim Verlassen wird er geschlossen — Matches und Favoriten bleiben im Archiv verfügbar.")
+            }
+        }
+        .alert("Als Gast abmelden?", isPresented: $showGuestLogoutAlert) {
+            Button("Konto sichern") {
+                viewModel.showUpgradeAccount = true
+            }
+            Button("Trotzdem abmelden", role: .destructive) {
+                authVM.logout()
+            }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Du bist als Gast eingeloggt. Beim Abmelden verlierst du alle Matches, Favoriten und Rooms unwiderruflich. Sichere dein Konto in 20 Sekunden mit Email + Passwort.")
         }
         .alert("Konto endgültig löschen?", isPresented: $showDeleteAccountConfirmation) {
             Button("Abbrechen", role: .cancel) {}
@@ -201,7 +217,13 @@ struct HomeView: View {
 
                 Divider()
 
-                Button(action: { authVM.logout() }) {
+                Button(action: {
+                    if authVM.currentUser?.isGuest == true {
+                        showGuestLogoutAlert = true
+                    } else {
+                        authVM.logout()
+                    }
+                }) {
                     Label("Abmelden", systemImage: "rectangle.portrait.and.arrow.right")
                 }
 

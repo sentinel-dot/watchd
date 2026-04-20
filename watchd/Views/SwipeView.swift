@@ -4,6 +4,8 @@ struct SwipeView: View {
     @StateObject private var viewModel: SwipeViewModel
     @StateObject private var favoritesVM = FavoritesViewModel()
     @State private var justFavoritedFeedback = false
+    @State private var showUpgradeAccount = false
+    @State private var upgradePendingAfterPromptDismiss = false
     @EnvironmentObject private var authVM: AuthViewModel
     @EnvironmentObject private var networkMonitor: NetworkMonitor
     @Environment(\.scenePhase) private var scenePhase
@@ -65,10 +67,31 @@ struct SwipeView: View {
                 }
             }
         }
-        .sheet(item: $viewModel.currentMatch) { match in
+        .sheet(item: $viewModel.currentMatch, onDismiss: {
+            viewModel.maybeShowUpgradePromptAfterMatch()
+        }) { match in
             MatchView(match: match, roomId: viewModel.room.id) {
                 viewModel.currentMatch = nil
             }
+        }
+        .sheet(isPresented: $viewModel.showUpgradePrompt, onDismiss: {
+            if upgradePendingAfterPromptDismiss {
+                upgradePendingAfterPromptDismiss = false
+                showUpgradeAccount = true
+            }
+        }) {
+            GuestUpgradePromptSheet(
+                onUpgrade: {
+                    upgradePendingAfterPromptDismiss = true
+                    viewModel.dismissUpgradePrompt()
+                },
+                onDismiss: {
+                    viewModel.dismissUpgradePrompt()
+                }
+            )
+        }
+        .sheet(isPresented: $showUpgradeAccount) {
+            UpgradeAccountView()
         }
         .alert("Fehler", isPresented: $viewModel.showError) {
             Button("OK") {}

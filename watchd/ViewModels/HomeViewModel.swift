@@ -33,7 +33,7 @@ final class HomeViewModel: ObservableObject {
         ) { [weak self] notification in
             if let code = notification.userInfo?["code"] as? String {
                 self?.joinCode = code
-                Task { await self?.joinRoom() }
+                Task { await self?.joinRoom(showErrorAsAlert: true) }
             }
         }
     }
@@ -89,7 +89,7 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
-    func joinRoom() async {
+    func joinRoom(showErrorAsAlert: Bool = false) async {
         let trimmed = joinCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard !trimmed.isEmpty else {
             errorMessage = "Bitte gib einen Einladungscode ein."
@@ -109,6 +109,9 @@ final class HomeViewModel: ObservableObject {
             navigateToSwipe = true
         } catch {
             errorMessage = error.localizedDescription
+            if showErrorAsAlert {
+                showError = true
+            }
         }
     }
 
