@@ -22,6 +22,10 @@ Tinder-style Movie-Matching-App, iOS-Client. Zwei User swipen in einem gemeinsam
 ## Projektstruktur
 
 ```
+watchd/docs/
+├── apns-end-to-end-setup.md   # Apple-Portal -> Xcode -> Railway -> Device-Test fuer Match-Pushes
+└── signing-provisioning.md    # Team ID, Bundle ID, Automatic Signing, Provisioning-Refresh
+
 watchd/watchd/
 ├── watchdApp.swift       # @main; deep link handling; environment objects: AuthViewModel, NetworkMonitor
 ├── ContentView.swift     # Root: AuthView (nicht auth) / HomeView (auth); ResetPassword-Sheet
@@ -149,6 +153,11 @@ enum APIConfig {
 
 ## Push Notifications
 
+Kanonische Runbooks:
+
+- `docs/apns-end-to-end-setup.md` fuer Apple Developer Portal -> Railway -> Device-Test
+- `docs/signing-provisioning.md` fuer Team ID, Bundle ID, Automatic Signing und Profile-Refresh
+
 ### iOS-Setup (einmalig pro Xcode-Projekt)
 
 1. **Push Capability aktivieren** — Target → Signing & Capabilities → `+ Capability` → "Push Notifications". Erzeugt `watchd.entitlements` mit `aps-environment`. **Ohne das schlägt `registerForRemoteNotifications()` lautlos fehl.**
@@ -164,9 +173,21 @@ enum APIConfig {
 
 ### APNs Sandbox vs Production
 
-- Debug-Build auf Xcode-Gerät → Backend muss `APNS_PRODUCTION=false` (Sandbox-Key)
-- TestFlight / App Store → `APNS_PRODUCTION=true` (Production-Key)
+- Debug-Build auf Xcode-Gerät → Backend muss `APNS_PRODUCTION=false` (Sandbox-Endpoint)
+- TestFlight / App Store → `APNS_PRODUCTION=true` (Production-Endpoint)
 - **Falsche Kombination schlägt lautlos fehl** — keine Fehlermeldung auf Client oder Server
+
+Aktueller Repo-Stand:
+
+- `watchd/watchd/watchd.entitlements` enthält `aps-environment = development`
+- `watchd.xcodeproj` nutzt `DEVELOPMENT_TEAM = RNK5A8AP8B`
+- Bundle ID ist `com.milinkovic.watchd`
+
+## Signing & Provisioning
+
+- Signing läuft aktuell über `Automatically manage signing`
+- Provisioning- und Team-Wechsel sind in `docs/signing-provisioning.md` dokumentiert
+- Bei Bundle-ID- oder Team-Wechsel immer danach `docs/apns-end-to-end-setup.md` erneut gegenprüfen
 
 ---
 
