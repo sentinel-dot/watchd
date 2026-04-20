@@ -318,10 +318,10 @@ struct AuthField: View {
                 isFocused: isFocused
             )
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
         .background(WatchdTheme.backgroundInput)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 

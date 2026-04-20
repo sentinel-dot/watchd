@@ -36,6 +36,8 @@ struct NativeTextField: UIViewRepresentable {
         )
         tf.setContentHuggingPriority(.defaultLow, for: .horizontal)
         tf.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        tf.setContentHuggingPriority(.required, for: .vertical)
+        tf.setContentCompressionResistancePriority(.required, for: .vertical)
         tf.addTarget(context.coordinator,
                      action: #selector(Coordinator.textChanged(_:)),
                      for: .editingChanged)
