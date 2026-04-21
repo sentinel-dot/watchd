@@ -43,6 +43,10 @@ watchd/watchd/
 │   │                         # isRefreshing-Flag verhindert parallele Refreshes; Timeout: 30s
 │   │                         # URLError.cancelled + Task.isCancelled → CancellationError
 │   │                         # (sonst zeigt pull-to-refresh den „Abgebrochen"-Alert)
+│   │                         # urlCache = nil + requestCachePolicy =
+│   │                         # .reloadIgnoringLocalCacheData — sonst hält URLCache
+│   │                         # GET /api/rooms heuristisch stale (Room-Status ändert
+│   │                         # sich Socket-seitig ohne Cache-Control-Header)
 │   ├── KeychainHelper.swift  # JWT + User-Info Storage via Security framework
 │   ├── NetworkMonitor.swift  # @MainActor ObservableObject; NWPathMonitor → @Published isConnected
 │   └── SocketService.swift   # @MainActor Singleton; Publishers: matchPublisher,
@@ -135,19 +139,24 @@ Deep Links:
 
 ## Backend-URL konfigurieren
 
-`watchd/Config/APIConfig.swift` bearbeiten:
+`watchd/Config/APIConfig.swift` bearbeiten. Es gibt **eine** Base-URL (`backendBaseURL`), aus der `baseURL` / `socketURL` / `iconsBaseURL` computed werden:
 
 ```swift
 enum APIConfig {
     #if DEBUG
-    static let baseURL   = "http://192.168.178.31:3000/api"   // lokaler Dev-Server
-    static let socketURL = "http://192.168.178.31:3000"
+    private static let backendBaseURL = "http://localhost:3000"
     #else
-    static let baseURL   = "https://watchd.up.railway.app/api"
-    static let socketURL = "https://watchd.up.railway.app"
+    private static let backendBaseURL = "https://watchd.up.railway.app"
     #endif
+
+    static var baseURL:      String { "\(backendBaseURL)/api" }
+    static var socketURL:    String { backendBaseURL }
+    static var iconsBaseURL: String { backendBaseURL }
+    static let tmdbImageBase = "https://image.tmdb.org/t/p/w780"
 }
 ```
+
+Für Device-Tests im LAN die `localhost`-Zeile auf die Mac-LAN-IP ändern (z. B. `http://192.168.1.42:3000`).
 
 ---
 

@@ -16,44 +16,72 @@ A native SwiftUI app where two users swipe on movies Tinder-style and get a matc
 
 ```
 watchd/
+├── watchdApp.swift              # @main entry point, deep link handling
+├── ContentView.swift            # Root: AuthView / HomeView switch
+├── AppDelegate.swift            # APNs device-token registration
+├── watchd.entitlements          # aps-environment, associated-domains
+├── Vendor/                      # socket.io-client-swift 16.1.1 + Starscream 4.0.8
 ├── Config/
-│   └── APIConfig.swift          # Base URLs — edit here to change backend
+│   ├── APIConfig.swift          # Base URLs — edit here to change backend
+│   └── WatchdTheme.swift        # Design system (colors, fonts, gradients)
 ├── Models/
 │   ├── AuthModels.swift
 │   ├── RoomModels.swift
 │   ├── MovieModels.swift
 │   └── MatchModels.swift
 ├── Services/
-│   ├── APIService.swift         # URLSession async/await wrapper
+│   ├── APIService.swift         # URLSession async/await wrapper (actor)
 │   ├── SocketService.swift      # Socket.io real-time match events
-│   └── KeychainHelper.swift     # JWT token storage
+│   ├── KeychainHelper.swift     # JWT + user info storage
+│   └── NetworkMonitor.swift     # NWPathMonitor online/offline state
 ├── ViewModels/
 │   ├── AuthViewModel.swift
 │   ├── HomeViewModel.swift
 │   ├── SwipeViewModel.swift
-│   └── MatchesViewModel.swift
+│   ├── MatchesViewModel.swift
+│   └── FavoritesViewModel.swift
 └── Views/
-    ├── AuthView.swift           # Login / Register
-    ├── HomeView.swift           # Create / Join room
-    ├── SwipeView.swift          # Main swipe screen
-    ├── MovieCardView.swift      # Individual draggable card
-    ├── MatchView.swift          # Match modal + confetti
-    ├── MatchesListView.swift    # All matches for the room
-    └── MovieDetailView.swift    # Full movie detail + streaming info
+    ├── AuthView.swift              # Login / Register / Guest / Forgot-Password
+    ├── HomeView.swift              # Rooms list, create / join navigation
+    ├── SwipeView.swift             # Main swipe screen (card stack)
+    ├── MovieCardView.swift         # Individual draggable card
+    ├── MatchView.swift             # Match modal + confetti + streaming
+    ├── MatchesListView.swift       # All matches for the room
+    ├── FavoritesListView.swift     # Favorited matches
+    ├── MovieDetailView.swift       # Full movie detail + streaming info
+    ├── CreateRoomSheet.swift       # New room: name + filters
+    ├── RoomFiltersView.swift       # Edit filters on existing room
+    ├── ArchivedRoomsView.swift     # Dissolved rooms, hard-delete
+    ├── UpgradeAccountView.swift    # Guest → full account
+    ├── GuestUpgradePromptSheet.swift # Prompt after N matches as guest
+    ├── PasswordResetViews.swift    # Forgot + reset via deep-link token
+    ├── LegalView.swift             # Privacy / imprint / terms
+    ├── NativeTextField.swift       # UITextField wrapper
+    └── SharedComponents.swift      # Reusable buttons, loaders, empty-states
 ```
 
 ---
 
 ## Changing the Backend URL
 
-Open `watchd/Config/APIConfig.swift` and update the two constants:
+Debug-builds hit `http://localhost:3000`, release-builds (TestFlight / App Store) hit the Railway URL. Open `watchd/Config/APIConfig.swift` and update `backendBaseURL` — the computed `baseURL` / `socketURL` / `iconsBaseURL` derive from it automatically:
 
 ```swift
 enum APIConfig {
-    static let baseURL  = "http://192.168.178.31:3000/api"   // REST API
-    static let socketURL = "http://192.168.178.31:3000"       // Socket.io
+    #if DEBUG
+    private static let backendBaseURL = "http://localhost:3000"
+    #else
+    private static let backendBaseURL = "https://watchd.up.railway.app"
+    #endif
+
+    static var baseURL:      String { "\(backendBaseURL)/api" }
+    static var socketURL:    String { backendBaseURL }
+    static var iconsBaseURL: String { backendBaseURL }
+    static let tmdbImageBase = "https://image.tmdb.org/t/p/w780"
 }
 ```
+
+For device tests over LAN, replace `localhost` with your Mac's LAN IP (e.g. `http://192.168.1.42:3000`) in the `#if DEBUG` branch.
 
 ---
 
@@ -82,17 +110,32 @@ Press **⌘R**.
 ## App Flow
 
 ```
-AuthView (Login / Register)
+AuthView (Login / Register / Guest / Forgot-Password)
     └── HomeView
-            ├── Create Room → shows 6-char invite code card (copy / share)
+            ├── Create Room → CreateRoomSheet (name + filters)
             │       └── "Start Swiping" → SwipeView
-            └── Join Room  → enter friend's code → SwipeView
+            ├── Join Room  → enter 6-char code → SwipeView
+            ├── Edit filters → RoomFiltersView → stack regenerated
+            ├── Favorites → FavoritesListView → MovieDetailView
+            ├── Archived rooms → ArchivedRoomsView
+            └── Settings: name, upgrade (guest), legal, logout
                                     │
-                                    ├── Swipe right/left on movie cards
-                                    ├── Socket listens for "match" events
-                                    ├── MatchView modal (confetti + streaming)
-                                    └── MatchesListView → MovieDetailView
+SwipeView
+    ├── Swipe right/left on movie cards (100pt threshold)
+    ├── Socket events: match, partner_joined/left, room_dissolved, filters_updated
+    ├── MatchView modal (confetti + streaming)
+    │       ├── "Keep swiping" → back to SwipeView
+    │       │       └── (guest, ≥3 matches, cooldown)
+    │       │           → GuestUpgradePromptSheet → UpgradeAccountView
+    │       └── "All matches" → MatchesListView → MovieDetailView
+    └── Heart button → toggle favorite
+
+Deep links:
+  watchd://join/ROOMCODE              → auto-join room
+  watchd://reset-password?token=TOKEN → ResetPasswordView sheet
 ```
+
+For the full Xcode / signing / APNs setup see [`CLAUDE.md`](./CLAUDE.md) and [`docs/`](./docs/).
 
 ---
 

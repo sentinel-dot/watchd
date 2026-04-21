@@ -28,6 +28,8 @@ actor APIService {
     private init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
+        config.urlCache = nil
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(configuration: config)
 
         decoder = JSONDecoder()
