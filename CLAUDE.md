@@ -4,6 +4,8 @@ Tinder-style Movie-Matching-App, iOS-Client. Zwei User swipen in einem gemeinsam
 
 > **Backend-Doku**: Diese Datei deckt ausschließlich die iOS-App ab. Backend-Routen, API-Verträge, Socket.io-Events, JWT-Strategie, Env-Vars und Match-Flow-Logik sind im Backend-Repo (`watchd_backend-mac/CLAUDE.md`) dokumentiert.
 
+> **Design-Kontext**: `.impeccable.md` im Repo-Root ist die kanonische Quelle für Zielgruppe, Markenhaltung, Aesthetic-Direction und Design-Prinzipien. Alle Design-Skills (`/impeccable`, `/typeset`, `/layout`, `/colorize`, `/animate`, `/critique`, `/polish`, `/audit`, `/delight`, `/clarify`, `/distill`, `/adapt`, `/quieter`, `/bolder`) lesen diese Datei zuerst. Implementation-Details (Hex-Werte, Font-Dateinamen, Motion-Kurven, Type-Scale) leben im Code unter `watchd/Config/` — `Theme.swift`, `Color+Tokens.swift`, `FontRegistry.swift`.
+
 > **Diese Datei aktuell halten.** Nach jeder Änderung an Views, ViewModels, Services oder Xcode-Setup aktualisieren.
 
 ---
@@ -13,8 +15,8 @@ Tinder-style Movie-Matching-App, iOS-Client. Zwei User swipen in einem gemeinsam
 - **Framework**: SwiftUI (iOS 16+, Xcode 16+)
 - **Architektur**: MVVM — alle ViewModels `@MainActor ObservableObject`
 - **Netzwerk**: `URLSession` actor (`APIService`), Socket.io (vendored, v16.1.1)
-- **Storage**: Keychain (`com.watchd.app`) — Keys: `jwt_token`, `jwt_refresh_token`, `user_id`, `user_name`, `user_email`, `is_guest`
-- **Theme**: Netflix-style — Background `#141414`, Primary Red `#E50914`
+- **Storage**: Keychain (`com.watchd.app`) — Keys: `jwt_token`, `jwt_refresh_token`, `user_id`, `user_name`, `user_email`, `is_guest`; UserDefaults-Key `selectedThemeId` für die Theme-Wahl
+- **Theme**: Einziges Theme — **Velvet Hour** (cool dark — Base #14101E, Champagne-Accent #D3A26B, Bluu Next Display + Manrope Body). Struct-basiert (`Config/Theme.swift`) mit `@Environment(\.theme)`-Pattern, projektweit statisch injiziert (`watchdApp`: `.environment(\.theme, .velvetHour)` + `.preferredColorScheme(.dark)`). Kein ThemeManager, kein Switcher. OKLCH-designed, sRGB-shipped. Design-Kontext: `.impeccable.md`
 - **Socket.io**: `socket.io-client-swift` v16.1.1 + `Starscream` v4.0.8 sind unter `watchd/Vendor/` vendored — kein SPM-Schritt nötig. Xcode 16 `PBXFileSystemSynchronizedRootGroup` nimmt neue `.swift`-Dateien automatisch auf
 
 ---
@@ -31,8 +33,17 @@ watchd/watchd/
 ├── ContentView.swift     # Root: AuthView (nicht auth) / HomeView (auth); ResetPassword-Sheet
 ├── AppDelegate.swift     # APNs-Token → hex → POST /users/me/device-token; foreground notifications
 ├── Config/
-│   ├── APIConfig.swift   # Base URLs (Debug: localhost:3000, Release: Railway); #if DEBUG
-│   └── WatchdTheme.swift # Design System (Farben, Fonts, Gradients)
+│   ├── APIConfig.swift          # Base URLs (Debug: localhost:3000, Release: Railway); #if DEBUG
+│   ├── Theme.swift              # struct Theme (kein ThemeID, kein id-Feld) +
+│   │                            # einzige Instanz Theme.velvetHour;
+│   │                            # ThemeFonts.velvetHour (BluuNext + Manrope)
+│   ├── Color+Tokens.swift       # VelvetHourPalette enum + ThemeColors.velvetHour;
+│   │                            # sRGB-Hex mit OKLCH-Source-Kommentaren
+│   ├── ThemeEnvironment.swift   # @Environment(\.theme) EnvironmentKey + Extension
+│   ├── ThemeManager.swift       # Leer-Stub (entfernt — kein Switching mehr nötig)
+│   └── FontRegistry.swift       # registerAll() via CTFontManagerRegisterFontsForURL;
+│                                # nur BluuNext + Manrope (6 Dateien); loggt fehlende
+│                                # Font-Dateien, kein Crash — Fallback auf Systemfonts
 ├── Models/               # Codable structs (snake_case → camelCase via keyDecodingStrategy)
 │   ├── AuthModels.swift  # Auth requests/responses, User struct
 │   ├── MovieModels.swift # Movie, StreamingOption, SwipeRequest/Response, MatchInfo
@@ -73,15 +84,52 @@ watchd/watchd/
 │   ├── MatchesViewModel.swift # fetchMatches() paginiert; mehr laden bei letzten 5; min 450ms
 │   └── FavoritesViewModel.swift # loadFavorites(), toggleFavorite(), removeFavorite(), isFavorite()
 │                                 # paginiert; mehr laden bei letzten 5; min 450ms
+├── Fonts/                 # OFL-Font-Dateien für Velvet Hour: BluuNext-Bold/-BoldItalic +
+│                          # Manrope-Regular/Medium/SemiBold/Bold (6 Dateien, alle im Bundle).
+│                          # README.md listet Quellen + erwartete Dateinamen (= PostScript-
+│                          # Name). Fehlen Files → Fallback auf Systemfonts, kein Crash
 └── Views/
     ├── AuthView.swift             # Login / Register / Guest / Forgot-Password Entry-Screen
-    ├── HomeView.swift             # Room-Liste, Navigation zu Swipe / Archiv / Einstellungen
-    ├── SwipeView.swift            # Karten-Stack (3 gestaffelt), Drag-Gesture, Match-Modal-Trigger
-    ├── MatchView.swift            # Vollbild-Match mit Konfetti + Streaming-Optionen
+    ├── MainTabView.swift          # Auth-Root: 3-Tab-Container (Räume / Favoriten / Profil),
+    │                              # pro Tab eigene NavigationStack; UITabBarAppearance wird
+    │                              # beim Init + bei Theme-Wechsel getintet. TabBar wird in
+    │                              # SwipeView via .toolbar(.hidden, for: .tabBar) versteckt
+    ├── RoomsView.swift            # Räume-Tab (ex-HomeView). Editorial-Header („Guten Abend,"
+    │                              # + Name in displayHero, dezentes Gast-Caps-Badge).
+    │                              # Asymmetrische Room-Rows: Nº-Numeral (display-serif),
+    │                              # Raumname (titleMedium), Status-Dot + caps-Meta,
+    │                              # Code in tracked-Caps. Menü via contextMenu + swipeActions
+    │                              # (kein Gear-Strip mehr). Bottom-CTAs: Coral-primary
+    │                              # „Neuen Raum eröffnen" + textlicher „Code eingeben"-Link
+    ├── ProfileView.swift          # Profil-Tab (List-basiert): Konto (Name, Email, Guest-
+    │                              # Upgrade), Archiv, Rechtliches, Abmelden/Konto-löschen.
+    │                              # Kein Design-/Theme-Switcher mehr (Velvet Hour ist fix)
+    ├── SwipeView.swift            # Karten-Stack (3 gestaffelt, Back-Cards scale 0.92 / y24
+    │                              # / opacity-fade) mit Drag-Gesture, Match-Modal-Trigger.
+    │                              # Papier-Lineatur im Hintergrund (Canvas, 44pt-Raster,
+    │                              # cream @ 0.04). Toolbar: Raumname + partner-presence
+    │                              # („zu zweit" / „wartet auf Partner") statt WATCHD-Logo.
+    │                              # Drei differenzierte Action-Buttons (Skip/Merken/Gefällt)
+    │                              # mit caps-Labels darunter
+    ├── MatchView.swift            # Hero-Moment (ersetzt Konfetti): radialer Accent-Bloom
+    │                              # (RadialGradient, scale 0.3→1.25 + opacity-fade, 600ms
+    │                              # easeOutExpo) + .success UINotificationFeedbackGenerator
+    │                              # + 6-Stufen-Staggered-Reveal (Headline→Subtitle→Poster→
+    │                              # Title→Providers→CTAs, je 150ms). Headline „Match." in
+    │                              # display-serif italic Accent. Provider als horizontaler
+    │                              # ProviderChip-Strip (nicht mehr 3×-Grid). Reduce-Motion:
+    │                              # alle Delays auf 0, kein Bloom, nur Opacity-Reveal
     ├── MatchesListView.swift      # Paginiert, watched togglen, Detail-Navigation
     ├── FavoritesListView.swift    # Paginiert, toggleFavorite, Detail-Navigation
-    ├── MovieDetailView.swift      # Film-Details + Streaming-Anbieter
-    ├── MovieCardView.swift        # Einzelne Swipe-Karte (Poster, Titel, Rating, Herz-Button)
+    ├── MovieDetailView.swift      # Film-Details editorial: displayHero-Title, Meta-Zeile
+    │                              # (Rating·Jahr·Match/Favorit-caps-Badges), Pull-Quote-
+    │                              # Overview (2pt Accent-Rule links, italic bodyRegular),
+    │                              # Streaming als typografische StreamingListRow-Liste
+    │                              # (Icon 32pt + Name + Monetization-caps-Label)
+    ├── MovieCardView.swift        # Swipe-Karte: Display-Serif-Title (30pt), Meta-Zeile
+    │                              # (Rating · Jahr), Italic-Pull-Quote-Overview (3 Zeilen,
+    │                              # tap-to-expand). Overlay-Badges „Gefällt"/„Nein" als
+    │                              # dünner caps-Text auf Accent-Rahmen, 3° Rotation
     ├── CreateRoomSheet.swift      # Neuer Room: Name + Filter (Genres, Jahre, Streaming)
     ├── RoomFiltersView.swift      # Filter-Editor für bestehenden Room → Stack neu generieren
     ├── ArchivedRoomsView.swift    # Liste + Hard-Delete archivierter Rooms
@@ -105,30 +153,32 @@ App Launch → ContentView
 │   ├── Register-Sheet
 │   ├── Passwort vergessen → Reset-Mail → deep link → ResetPasswordView
 │   └── Guest Login (anonymer dt. Name)
-└── AUTH → HomeView
-    ├── Room-Karte → SwipeView
-    │   ├── Karten-Stack (3 Karten, gestaffelt): Drag ±100pt
-    │   ├── Right-Swipe → Matchmaking → Socket.io match → MatchView Modal
-    │   │   └── MatchView: Konfetti + Streaming-Optionen
-    │   │       ├── "Weiter swipen" → zurück zur SwipeView
-    │   │       │   └── (Gast, ≥3 Matches, Cooldown abgelaufen)
-    │   │       │       → GuestUpgradePromptSheet
-    │   │       │         ├── "Jetzt sichern" → UpgradeAccountView
-    │   │       │         └── "Später" → zurück zur SwipeView
-    │   │       └── "Alle Matches" → MatchesListView
-    │   ├── Herz-Button (Karte) → Favorit togglen
-    │   ├── Toolbar-Herz → MatchesListView → MovieDetailView
-    │   └── Socket Events: partner_joined/left, room_dissolved, filters_updated
-    ├── Room erstellen → CreateRoomSheet (Name + Filter) → SwipeView
-    ├── Room beitreten → JoinRoomSheet (6-char Code) → SwipeView
-    ├── Filter bearbeiten → RoomFiltersView → Stack neu generieren
-    ├── Favoriten → FavoritesListView → MovieDetailView
-    ├── Archivierte Rooms → ArchivedRoomsView
-    └── Einstellungen: Name, Upgrade (Guest), Legal, Logout
-        └── Logout als Gast → 3-Button-Alert:
-            ├── "Konto sichern" → UpgradeAccountView
-            ├── "Trotzdem abmelden" → logout (destructive)
-            └── "Abbrechen"
+└── AUTH → MainTabView (3 Tabs, jeder mit eigener NavigationStack)
+    ├── Tab "Räume" → RoomsView
+    │   ├── Room-Karte → SwipeView (TabBar hidden)
+    │   │   ├── Karten-Stack (3 Karten, gestaffelt): Drag ±100pt
+    │   │   ├── Right-Swipe → Matchmaking → Socket.io match → MatchView Sheet
+    │   │   │   └── MatchView: Radial-Bloom + Staggered-Reveal + Streaming-Optionen
+    │   │   │       ├── "Weiter swipen" → zurück zur SwipeView
+    │   │   │       │   └── (Gast, ≥3 Matches, Cooldown abgelaufen)
+    │   │   │       │       → GuestUpgradePromptSheet
+    │   │   │       │         ├── "Jetzt sichern" → UpgradeAccountView
+    │   │   │       │         └── "Später" → zurück zur SwipeView
+    │   │   │       └── "Alle Matches" → MatchesListView
+    │   │   ├── Herz-Button (Karte) → Favorit togglen
+    │   │   ├── Toolbar-Herz → MatchesListView → MovieDetailView
+    │   │   └── Socket Events: partner_joined/left, room_dissolved, filters_updated
+    │   ├── Room erstellen → CreateRoomSheet (Name + Filter) → SwipeView
+    │   ├── Room beitreten → JoinRoomSheet (6-char Code) → SwipeView
+    │   └── Filter bearbeiten → RoomFiltersView → Stack neu generieren
+    ├── Tab "Favoriten" → FavoritesListView (global, roomId-entkoppelt) → MovieDetailView
+    └── Tab "Profil" → ProfileView
+        ├── Konto: Name editieren, Email anzeigen, Guest → "Konto sichern" → UpgradeAccountView
+        ├── Archiv → ArchivedRoomsView
+        ├── Rechtliches → Datenschutz / Nutzungsbedingungen / Impressum / Datenquellen
+        └── Session:
+            ├── Abmelden → (Gast: 3-Button-Alert "Konto sichern" | "Trotzdem abmelden" | "Abbrechen")
+            └── Konto löschen → Destructive-Alert
 
 Deep Links:
   watchd://join/ROOMCODE              → auto-join (oder Code für Post-Login queuen)
@@ -207,8 +257,13 @@ Aktueller Repo-Stand:
 - API-Antworten werden mit `keyDecodingStrategy = .convertFromSnakeCase` dekodiert — Model-Properties also camelCase, Backend-Felder snake_case
 - Neue `.swift`-Dateien in `watchd/watchd/` werden von Xcode 16 automatisch erfasst — **kein Projektfile-Edit nötig, keinen Drag-to-Project-Schritt**
 - Socket.io-Verbindung ist **lazy** — nur beim Betreten einer SwipeView wird connected; beim Verlassen disconnect. Spart Akku + hält Socket-Count niedrig
+- **TabBar-Hide in Immersive-Screens** via `.toolbar(.hidden, for: .tabBar)` — aktuell in `SwipeView`. Sheets überlagern die TabBar automatisch, brauchen den Modifier nicht. Neue Immersive-Views explizit ergänzen
 - Ladeanimationen haben **min 450 ms Dauer** (HomeViewModel, MatchesViewModel, FavoritesViewModel) — verhindert Flackern bei schnellen Requests
 - Min 450 ms und 100 pt Drag-Threshold sind bewusste UX-Werte, nicht zufällig — beim Ändern testen
+- Theme-Zugriff in allen Views: `@Environment(\.theme) var theme`, dann `theme.colors.X` / `theme.fonts.X` / `theme.spacing.X` / `theme.motion.X`. Kein ThemeManager, kein Switcher — Theme ist statisch Velvet Hour
+- Neue Font-Dateien **nicht** in Info.plist eintragen — Target nutzt `GENERATE_INFOPLIST_FILE = YES`. Stattdessen File-Name in `FontRegistry.bundledFonts` aufnehmen (Name = PostScript-Name); `CTFontManagerRegisterFontsForURL` zieht sie beim App-Launch
+- Design-Tokens kommen **ausschließlich** aus dem aktiven Theme — keine hardcoded Farben/Fonts in neuen Views, keine Fonts aus der `reflex_fonts_to_reject`-Liste (Inter, DM Sans, Fraunces, Playfair etc.)
+- `toolbarColorScheme` in allen Views hardcoded `.dark` — Velvet Hour ist dauerhaft dark, kein dynamischer Wert nötig
 
 ---
 
@@ -218,6 +273,11 @@ Aktueller Repo-Stand:
 - NICHT: `APIConfig.swift` hardcoded URLs von `localhost` auf Railway ändern, ohne `#if DEBUG` — sonst funktioniert Dev-Build nicht mehr
 - NICHT: Push-Capability vergessen beim neuen Provisioning-Profile — `registerForRemoteNotifications()` schlägt dann lautlos fehl, User kriegt nie Match-Push
 - NICHT: Socket.io eager connecten (direkt beim App-Start) — nur beim Betreten der SwipeView, sonst unnötige Connections für User, die gerade nicht swipen
+- NICHT: `WatchdTheme.X`-Call-Sites reanimieren — der Shim wurde in Phase 4 gelöscht; alle Views greifen über `@Environment(\.theme)` zu
+- NICHT: Konfetti, Partikel-Effekte oder Gamifizierungs-Overlays in `MatchView` reintragen — das kanonische Muster ist radialer Accent-Bloom + staggered Reveal + `.success`-Haptik (Duolingo-Rhythmus, nicht -Optik; siehe `.impeccable.md` §3 Design-Prinzip 5)
+- NICHT: Animationen ohne `@Environment(\.accessibilityReduceMotion)`-Gate bauen — Bloom, Stagger und Button-Press müssen bei Reduce-Motion auf Opacity-only fallen
+- NICHT: Fonts aus der `reflex_fonts_to_reject`-Liste (Inter, DM Sans, Space Grotesk, Fraunces, Playfair Display, Instrument Sans/Serif etc.) ergänzen — AI-Monokultur, explizit im `impeccable`-Skill verboten
+- NICHT: `Info.plist → UIAppFonts` pflegen — Target hat keine Plist-Datei (`GENERATE_INFOPLIST_FILE = YES`); Fonts werden in `FontRegistry.bundledFonts` eingetragen
 - IMMER: Nach Models-Änderung checken dass Backend-API tatsächlich die erwartete Response-Shape liefert (siehe Backend-Repo `watchd_backend-mac/CLAUDE.md` → API-Routen)
 - IMMER: Diese CLAUDE.md updaten wenn neue Views / ViewModels / Services dazukommen oder umbenannt werden
 

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct UpgradeAccountView: View {
+    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authVM: AuthViewModel
 
@@ -10,92 +11,136 @@ struct UpgradeAccountView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
 
+    @State private var isEmailFocused = false
+    @State private var isPasswordFocused = false
+    @State private var isConfirmFocused = false
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
-                WatchdTheme.background.ignoresSafeArea()
+                theme.colors.base.ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 24) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(WatchdTheme.iconLarge())
-                                .foregroundColor(WatchdTheme.primary)
-                            Text("Konto erstellen")
-                                .font(WatchdTheme.titleLarge())
-                                .foregroundColor(WatchdTheme.textPrimary)
-                            Text("Sichere deine Daten mit einem Konto")
-                                .font(WatchdTheme.body())
-                                .foregroundColor(WatchdTheme.textSecondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 32)
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Nº 03 · Sichern")
+                                .font(theme.fonts.microCaption)
+                                .textCase(.uppercase)
+                                .tracking(1.8)
+                                .foregroundColor(theme.colors.accent)
+                            Text("Konto sichern.")
+                                .font(theme.fonts.display(size: 34, weight: .regular))
+                                .italic()
+                                .foregroundColor(theme.colors.textPrimary)
                         }
-                        .padding(.top, 40)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, 28)
 
-                        VStack(spacing: 18) {
-                            AuthField(icon: "envelope.fill", placeholder: "E-Mail", text: $email, keyboardType: .emailAddress)
-                            AuthField(icon: "lock.fill", placeholder: "Passwort", text: $password, isSecure: true)
-                            AuthField(icon: "lock.fill", placeholder: "Passwort bestätigen", text: $confirmPassword, isSecure: true)
-
-                            if let error = errorMessage {
-                                Text(error)
-                                    .font(WatchdTheme.caption())
-                                    .foregroundColor(WatchdTheme.primary)
-                                    .multilineTextAlignment(.center)
-                            }
-
-                            PrimaryButton(title: "Konto erstellen", isLoading: isLoading) {
-                                Task { await upgradeAccount() }
-                            }
-                            .padding(.top, 4)
+                        HStack(alignment: .top, spacing: 14) {
+                            Rectangle()
+                                .fill(theme.colors.accent)
+                                .frame(width: 2, height: 62)
+                            Text("Damit euer Abend auch nach dem Logout euch gehört.")
+                                .font(theme.fonts.body(size: 16, weight: .regular))
+                                .italic()
+                                .foregroundColor(theme.colors.textSecondary)
+                                .lineSpacing(4)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        .padding(28)
-                        .background(WatchdTheme.backgroundCard)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .padding(.horizontal, 24)
+                        .padding(.bottom, 40)
 
-                        VStack(spacing: 12) {
-                            Text("Deine Vorteile:")
-                                .font(WatchdTheme.bodyMedium())
-                                .foregroundColor(WatchdTheme.textPrimary)
-
-                            VStack(alignment: .leading, spacing: 10) {
-                                BenefitRow(icon: "lock.shield.fill", text: "Deine Rooms und Matches bleiben erhalten")
-                                BenefitRow(icon: "arrow.triangle.2.circlepath", text: "Passwort zurücksetzen möglich")
-                                BenefitRow(icon: "iphone.and.arrow.forward", text: "Auf mehreren Geräten nutzbar")
-                            }
-                            .padding(.horizontal, 32)
+                        VStack(spacing: 4) {
+                            AuthField(
+                                icon: "envelope", placeholder: "E-Mail", text: $email,
+                                keyboardType: .emailAddress, textContentType: .emailAddress,
+                                returnKeyType: .next, onSubmit: { isPasswordFocused = true },
+                                isFocused: $isEmailFocused
+                            )
+                            AuthField(
+                                icon: "lock", placeholder: "Passwort", text: $password,
+                                isSecure: true, textContentType: .newPassword,
+                                returnKeyType: .next, onSubmit: { isConfirmFocused = true },
+                                isFocused: $isPasswordFocused
+                            )
+                            AuthField(
+                                icon: "lock", placeholder: "Bestätigen", text: $confirmPassword,
+                                isSecure: true, textContentType: .newPassword,
+                                returnKeyType: .done, onSubmit: { Task { await upgradeAccount() } },
+                                isFocused: $isConfirmFocused
+                            )
                         }
-                        .padding(.top, 8)
 
-                        Spacer(minLength: 40)
+                        Text("Mindestens acht Zeichen.")
+                            .font(theme.fonts.caption)
+                            .foregroundColor(theme.colors.textTertiary)
+                            .padding(.top, 10)
+                            .padding(.bottom, 18)
+
+                        if let error = errorMessage {
+                            Text(error)
+                                .font(theme.fonts.caption)
+                                .foregroundColor(theme.colors.error)
+                                .padding(.bottom, 14)
+                        }
+
+                        PrimaryButton(title: "Konto sichern", isLoading: isLoading) {
+                            Task { await upgradeAccount() }
+                        }
+                        .padding(.bottom, 36)
+
+                        benefits
+
+                        Spacer(minLength: 60)
                     }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 32)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(WatchdTheme.background, for: .navigationBar)
+            .toolbarBackground(theme.colors.base, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Abbrechen") { dismiss() }
-                        .foregroundColor(WatchdTheme.textSecondary)
+                    Button(action: { dismiss() }) {
+                        Text("Abbrechen")
+                            .font(theme.fonts.microCaption)
+                            .textCase(.uppercase)
+                            .tracking(1.4)
+                            .foregroundColor(theme.colors.textSecondary)
+                    }
                 }
+            }
+        }
+    }
+
+    private var benefits: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Was bleibt")
+                .font(theme.fonts.microCaption)
+                .textCase(.uppercase)
+                .tracking(1.6)
+                .foregroundColor(theme.colors.textTertiary)
+                .padding(.bottom, 18)
+
+            VStack(alignment: .leading, spacing: 14) {
+                BenefitRow(ordinal: "i", text: "Räume und Matches bleiben erhalten.")
+                BenefitRow(ordinal: "ii", text: "Passwort lässt sich zurücksetzen.")
+                BenefitRow(ordinal: "iii", text: "Ihr könnt euch auf jedem Gerät anmelden.")
             }
         }
     }
 
     private func upgradeAccount() async {
         guard !email.isEmpty else {
-            errorMessage = "Bitte E-Mail eingeben"
+            errorMessage = "E-Mail fehlt."
             return
         }
         guard password.count >= 8 else {
-            errorMessage = "Passwort muss mindestens 8 Zeichen lang sein"
+            errorMessage = "Mindestens acht Zeichen, bitte."
             return
         }
         guard password == confirmPassword else {
-            errorMessage = "Passwörter stimmen nicht überein"
+            errorMessage = "Die Passwörter stimmen nicht überein."
             return
         }
 
@@ -114,21 +159,22 @@ struct UpgradeAccountView: View {
 }
 
 private struct BenefitRow: View {
-    let icon: String
+    @Environment(\.theme) private var theme
+    let ordinal: String
     let text: String
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(WatchdTheme.iconMedium())
-                .foregroundColor(WatchdTheme.primary)
-                .frame(width: 24)
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+            Text(ordinal)
+                .font(theme.fonts.display(size: 14, weight: .regular))
+                .italic()
+                .foregroundColor(theme.colors.accent)
+                .frame(width: 22, alignment: .leading)
 
             Text(text)
-                .font(WatchdTheme.caption())
-                .foregroundColor(WatchdTheme.textSecondary)
-
-            Spacer()
+                .font(theme.fonts.bodyRegular)
+                .foregroundColor(theme.colors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
@@ -136,5 +182,6 @@ private struct BenefitRow: View {
 #Preview {
     UpgradeAccountView()
         .environmentObject(AuthViewModel.shared)
+        .environment(\.theme, .velvetHour)
         .preferredColorScheme(.dark)
 }

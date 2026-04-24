@@ -7,14 +7,10 @@ struct watchdApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authViewModel = AuthViewModel.shared
     @StateObject private var networkMonitor = NetworkMonitor()
-    @State private var pendingRoomCode: String?
 
     init() {
-        let netflixRed = UIColor(red: 0.898, green: 0.035, blue: 0.078, alpha: 1)
-        UINavigationBar.appearance().tintColor = netflixRed
-        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor: UIColor.white]
-        UINavigationBar.appearance().barTintColor = UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)
-        UINavigationBar.appearance().backgroundColor = UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)
+        FontRegistry.registerAll()
+        Self.applyNavigationBarAppearance(for: .velvetHour)
     }
 
     var body: some Scene {
@@ -22,6 +18,7 @@ struct watchdApp: App {
             ContentView()
                 .environmentObject(authViewModel)
                 .environmentObject(networkMonitor)
+                .environment(\.theme, .velvetHour)
                 .preferredColorScheme(.dark)
                 .onOpenURL { url in
                     handleDeepLink(url)
@@ -31,6 +28,17 @@ struct watchdApp: App {
                     handleUniversalLink(url)
                 }
         }
+    }
+
+    private static func applyNavigationBarAppearance(for theme: Theme) {
+        let accent = UIColor(theme.colors.accent)
+        let base = UIColor(theme.colors.base)
+        let text = UIColor(theme.colors.textPrimary)
+
+        UINavigationBar.appearance().tintColor = accent
+        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor: text]
+        UINavigationBar.appearance().barTintColor = base
+        UINavigationBar.appearance().backgroundColor = base
     }
 
     // Handles watchd:// custom URL scheme (join links, legacy reset-password links)
@@ -46,8 +54,6 @@ struct watchdApp: App {
                         object: nil,
                         userInfo: ["code": code]
                     )
-                } else {
-                    pendingRoomCode = code
                 }
             }
         } else if url.host == "reset-password", let token = url.queryParameters?["token"] {
@@ -55,8 +61,7 @@ struct watchdApp: App {
         }
     }
 
-    // Handles https:// Universal Links (e.g. https://watchd.up.railway.app/reset-password?token=…)
-    // iOS intercepts these before opening Safari when the Associated Domains entitlement is configured.
+    // Handles https:// Universal Links
     private func handleUniversalLink(_ url: URL) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
         if components.path == "/reset-password",
@@ -79,7 +84,6 @@ extension URL {
     var queryParameters: [String: String]? {
         guard let components = URLComponents(url: self, resolvingAgainstBaseURL: false),
               let queryItems = components.queryItems else { return nil }
-        
         var params = [String: String]()
         for item in queryItems {
             params[item.name] = item.value

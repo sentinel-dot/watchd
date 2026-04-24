@@ -10,18 +10,34 @@ struct SwipeView: View {
     @EnvironmentObject private var networkMonitor: NetworkMonitor
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(room: Room) {
         _viewModel = StateObject(wrappedValue: SwipeViewModel(room: room))
     }
 
+    private var roomDisplayName: String {
+        if let name = viewModel.room.name, !name.isEmpty { return name }
+        return "Raum \(viewModel.room.code)"
+    }
+
+    private var partnerPresenceLabel: String {
+        switch viewModel.room.status {
+        case "active": return "zu zweit"
+        case "waiting": return "wartet auf Partner"
+        default: return ""
+        }
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let cardWidth = geometry.size.width - 48
-            let cardHeight = geometry.size.height * 0.65
+            let cardHeight = geometry.size.height * 0.66
 
             ZStack(alignment: .top) {
-                WatchdTheme.background.ignoresSafeArea()
+                theme.colors.base.ignoresSafeArea()
+                paperLineaturBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     if !networkMonitor.isConnected {
@@ -29,32 +45,36 @@ struct SwipeView: View {
                             .animation(.spring(), value: networkMonitor.isConnected)
                     }
 
-                    Spacer(minLength: 40)
+                    Spacer(minLength: 32)
 
                     cardStack(cardWidth: cardWidth, cardHeight: cardHeight)
 
-                    Spacer(minLength: 20)
+                    Spacer(minLength: 24)
 
                     actionButtons
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 40)
+                        .padding(.horizontal, 28)
+                        .padding(.bottom, 44)
                 }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbarBackground(WatchdTheme.background, for: .navigationBar)
+        .toolbarBackground(theme.colors.base, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("WATCHD")
-                    .font(WatchdTheme.logoTitle())
-                    .foregroundColor(WatchdTheme.textPrimary)
-            }
-            ToolbarItem(placement: .navigationBarLeading) {
-                if viewModel.swipeCount > 0 {
-                    Text("\(viewModel.swipeCount) bewertet")
-                        .font(WatchdTheme.captionMedium())
-                        .foregroundColor(WatchdTheme.textSecondary)
+                VStack(spacing: 2) {
+                    Text(roomDisplayName)
+                        .font(theme.fonts.body(size: 15, weight: .semibold))
+                        .foregroundColor(theme.colors.textPrimary)
+                        .lineLimit(1)
+                    if !partnerPresenceLabel.isEmpty {
+                        Text(partnerPresenceLabel)
+                            .font(theme.fonts.microCaption)
+                            .tracking(1.0)
+                            .textCase(.uppercase)
+                            .foregroundColor(theme.colors.textTertiary)
+                    }
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -62,9 +82,10 @@ struct SwipeView: View {
                     MatchesListView(roomId: viewModel.room.id)
                 } label: {
                     Image(systemName: "heart.fill")
-                        .font(WatchdTheme.iconSmall())
-                        .foregroundColor(WatchdTheme.primary)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(theme.colors.accent)
                 }
+                .accessibilityLabel("Matches anzeigen")
             }
         }
         .sheet(item: $viewModel.currentMatch, onDismiss: {
@@ -98,15 +119,15 @@ struct SwipeView: View {
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
-        .alert("Partner hat den Room verlassen", isPresented: $viewModel.partnerLeft) {
+        .alert("Partner hat den Raum verlassen", isPresented: $viewModel.partnerLeft) {
             Button("OK") {}
         } message: {
-            Text("Dein Partner hat den Room verlassen. Du kannst weiter swipen oder zurück zur Übersicht gehen.")
+            Text("Dein Partner ist raus. Du kannst weiter swipen oder zurück zur Übersicht.")
         }
-        .alert("Room aufgelöst", isPresented: $viewModel.roomDissolved) {
+        .alert("Raum aufgelöst", isPresented: $viewModel.roomDissolved) {
             Button("Zur Übersicht") { dismiss() }
         } message: {
-            Text("Dieser Room wurde aufgelöst.")
+            Text("Dieser Raum wurde aufgelöst.")
         }
         .task {
             await viewModel.fetchFeed()
@@ -121,6 +142,28 @@ struct SwipeView: View {
         .disabled(!networkMonitor.isConnected)
     }
 
+    // MARK: - Paper Lineatur
+
+    private var paperLineaturBackground: some View {
+        GeometryReader { geo in
+            Canvas { context, size in
+                let lineColor = theme.colors.textTertiary.opacity(0.04)
+                let spacing: CGFloat = 44
+                var y: CGFloat = 0
+                while y < size.height {
+                    let path = Path { p in
+                        p.move(to: CGPoint(x: 0, y: y))
+                        p.addLine(to: CGPoint(x: size.width, y: y))
+                    }
+                    context.stroke(path, with: .color(lineColor), lineWidth: 0.5)
+                    y += spacing
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .allowsHitTesting(false)
+    }
+
     @ViewBuilder
     private func cardStack(cardWidth: CGFloat, cardHeight: CGFloat) -> some View {
         ZStack {
@@ -128,32 +171,31 @@ struct SwipeView: View {
                 VStack(spacing: 16) {
                     ProgressView()
                         .progressViewStyle(.circular)
-                        .tint(WatchdTheme.primary)
-                        .scaleEffect(1.5)
-                    Text("Filme werden geladen…")
-                        .font(WatchdTheme.bodyMedium())
-                        .foregroundColor(WatchdTheme.textSecondary)
+                        .tint(theme.colors.accent)
+                        .scaleEffect(1.3)
+                    Text("Filme werden kuratiert …")
+                        .font(theme.fonts.caption)
+                        .italic()
+                        .foregroundColor(theme.colors.textSecondary)
                 }
                 .frame(width: cardWidth, height: cardHeight)
             } else if viewModel.movies.isEmpty {
-                VStack(spacing: 20) {
-                    Image(systemName: "film.stack")
-                        .font(WatchdTheme.emptyStateIcon())
-                        .foregroundColor(WatchdTheme.textTertiary)
-
-                    VStack(spacing: 8) {
-                        Text("Keine weiteren Filme")
-                            .font(WatchdTheme.titleLarge())
-                            .foregroundColor(WatchdTheme.textPrimary)
-                        Text("Schau später nochmal vorbei")
-                            .font(WatchdTheme.caption())
-                            .foregroundColor(WatchdTheme.textSecondary)
-                    }
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Alles gesichtet.")
+                        .font(theme.fonts.titleLarge)
+                        .foregroundColor(theme.colors.textPrimary)
+                    Text("Für heute ist der Stapel durch. Komm später wieder — oder passt eure Filter an.")
+                        .font(theme.fonts.bodyRegular)
+                        .foregroundColor(theme.colors.textSecondary)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .frame(width: cardWidth, height: cardHeight)
+                .padding(.horizontal, 28)
+                .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
             } else {
                 ForEach(Array(viewModel.movies.prefix(3).enumerated().reversed()), id: \.element.id) { index, movie in
                     let isTop = index == 0
+                    let depth = CGFloat(index)
 
                     MovieCardView(
                         movie: movie,
@@ -161,8 +203,9 @@ struct SwipeView: View {
                         isTopCard: isTop
                     )
                     .frame(width: cardWidth, height: cardHeight)
-                    .scaleEffect(isTop ? 1.0 : 1.0 - CGFloat(index) * 0.04)
-                    .offset(y: isTop ? 0 : CGFloat(index) * 12)
+                    .scaleEffect(isTop ? 1.0 : 1.0 - depth * 0.08)
+                    .offset(y: isTop ? 0 : depth * 24)
+                    .opacity(isTop ? 1.0 : 1.0 - depth * 0.3)
                     .rotationEffect(isTop ? .degrees(Double(viewModel.dragOffset.width) / 25) : .zero)
                     .offset(
                         x: isTop ? viewModel.dragOffset.width : 0,
@@ -171,7 +214,7 @@ struct SwipeView: View {
                     .animation(.interactiveSpring(response: 0.4, dampingFraction: 0.7), value: viewModel.dragOffset)
                     .gesture(isTop ? swipeGesture : nil)
                     .zIndex(isTop ? 1 : 0)
-                    .shadow(color: .black.opacity(isTop ? 0.4 : 0.2), radius: isTop ? 24 : 12, y: isTop ? 12 : 6)
+                    .shadow(color: .black.opacity(isTop ? 0.45 : 0.2), radius: isTop ? 28 : 14, y: isTop ? 14 : 7)
                 }
             }
         }
@@ -188,101 +231,142 @@ struct SwipeView: View {
             }
     }
 
+    // MARK: - Action Buttons
+
     private var actionButtons: some View {
-        HStack(spacing: 24) {
-            // Ablehnen
-            Button {
-                Task { await viewModel.handleDragEnd(CGSize(width: -150, height: 0)) }
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(WatchdTheme.backgroundCard)
-                        .frame(width: 72, height: 72)
-                        .overlay(
-                            Circle()
-                                .stroke(WatchdTheme.separator, lineWidth: 1)
-                        )
-                    Image(systemName: "xmark")
-                        .font(WatchdTheme.titleLarge())
-                        .foregroundColor(WatchdTheme.textPrimary)
-                }
-            }
-            .disabled(viewModel.movies.isEmpty)
-            .opacity(viewModel.movies.isEmpty ? 0.4 : 1.0)
+        let disabled = viewModel.movies.isEmpty
+        let favoriteMovie = viewModel.movies.first
+        let isFav = favoritesVM.isFavorite(movieId: favoriteMovie?.id ?? 0)
 
-            Spacer()
+        return VStack(spacing: 10) {
+            HStack {
+                actionButton(
+                    label: "Skip",
+                    icon: "xmark",
+                    tint: theme.colors.textSecondary,
+                    filled: false,
+                    size: 60,
+                    accessibility: "Überspringen",
+                    action: {
+                        Task { await viewModel.handleDragEnd(CGSize(width: -150, height: 0)) }
+                    }
+                )
+                .opacity(disabled ? 0.35 : 1.0)
+                .disabled(disabled)
 
-            // Favorit (Mitte) – kleinerer Stern, weiche Animation, klares Feedback
-            Button {
-                guard let movie = viewModel.movies.first else { return }
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
-                if !favoritesVM.isFavorite(movieId: movie.id) {
-                    justFavoritedFeedback = true
-                    Task {
-                        try? await Task.sleep(nanoseconds: 800_000_000)
-                        await MainActor.run { justFavoritedFeedback = false }
+                Spacer()
+
+                favoriteButton(movie: favoriteMovie, isFav: isFav)
+                    .opacity(disabled ? 0.35 : 1.0)
+                    .disabled(disabled)
+
+                Spacer()
+
+                Button {
+                    Task { await viewModel.handleDragEnd(CGSize(width: 150, height: 0)) }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(theme.colors.primaryButtonGradient)
+                            .frame(width: 68, height: 68)
+                            .shadow(color: theme.colors.accent.opacity(0.35), radius: 14, y: 6)
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(theme.colors.textOnAccent)
                     }
                 }
-                Task {
-                    await favoritesVM.toggleFavorite(movieId: movie.id)
-                }
-            } label: {
-                let isFav = favoritesVM.isFavorite(movieId: viewModel.movies.first?.id ?? 0)
-                ZStack {
-                    Circle()
-                        .fill(
-                            isFav
-                                ? WatchdTheme.rating.opacity(0.25)
-                                : WatchdTheme.backgroundCard
-                        )
-                        .frame(width: 56, height: 56)
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    isFav ? WatchdTheme.rating : WatchdTheme.separator,
-                                    lineWidth: isFav ? 2 : 1
-                                )
-                        )
-                    Image(systemName: isFav ? "star.fill" : "star")
-                        .font(WatchdTheme.titleMedium())
-                        .foregroundColor(isFav ? WatchdTheme.rating : WatchdTheme.textPrimary)
-                        .scaleEffect(justFavoritedFeedback ? 1.25 : 1.0)
-                }
-            }
-            .disabled(viewModel.movies.isEmpty)
-            .opacity(viewModel.movies.isEmpty ? 0.4 : 1.0)
-            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: favoritesVM.isFavorite(movieId: viewModel.movies.first?.id ?? 0))
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: justFavoritedFeedback)
-            .overlay(alignment: .top) {
-                if justFavoritedFeedback {
-                    Text("Favorisiert")
-                        .font(WatchdTheme.captionMedium())
-                        .foregroundColor(WatchdTheme.rating)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .offset(y: -36)
-                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
-                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Gefällt uns")
+                .opacity(disabled ? 0.35 : 1.0)
+                .disabled(disabled)
             }
 
-            Spacer()
-
-            // Gefällt mir (Swipe Right)
-            Button {
-                Task { await viewModel.handleDragEnd(CGSize(width: 150, height: 0)) }
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(WatchdTheme.primaryButtonGradient)
-                        .frame(width: 72, height: 72)
-                    Image(systemName: "heart.fill")
-                        .font(WatchdTheme.titleLarge())
-                        .foregroundColor(.white)
-                }
+            HStack {
+                Text("Skip")
+                    .font(theme.fonts.microCaption)
+                    .tracking(1.4)
+                    .textCase(.uppercase)
+                    .foregroundColor(theme.colors.textTertiary)
+                    .frame(width: 60, alignment: .center)
+                Spacer()
+                Text(isFav ? "Gemerkt" : "Merken")
+                    .font(theme.fonts.microCaption)
+                    .tracking(1.4)
+                    .textCase(.uppercase)
+                    .foregroundColor(isFav ? theme.colors.rating : theme.colors.textTertiary)
+                    .frame(width: 52, alignment: .center)
+                Spacer()
+                Text("Gefällt")
+                    .font(theme.fonts.microCaption)
+                    .tracking(1.4)
+                    .textCase(.uppercase)
+                    .foregroundColor(theme.colors.textSecondary)
+                    .frame(width: 68, alignment: .center)
             }
-            .disabled(viewModel.movies.isEmpty)
-            .opacity(viewModel.movies.isEmpty ? 0.4 : 1.0)
         }
+    }
+
+    private func actionButton(
+        label: String,
+        icon: String,
+        tint: Color,
+        filled: Bool,
+        size: CGFloat,
+        accessibility: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(filled ? tint : Color.clear)
+                    .frame(width: size, height: size)
+                    .overlay(
+                        Circle()
+                            .stroke(tint.opacity(filled ? 0 : 0.5), lineWidth: 1)
+                    )
+                Image(systemName: icon)
+                    .font(.system(size: size * 0.35, weight: .medium))
+                    .foregroundColor(filled ? theme.colors.base : tint)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibility)
+    }
+
+    private func favoriteButton(movie: Movie?, isFav: Bool) -> some View {
+        Button {
+            guard let movie else { return }
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+            if !favoritesVM.isFavorite(movieId: movie.id) {
+                justFavoritedFeedback = true
+                Task {
+                    try? await Task.sleep(nanoseconds: 800_000_000)
+                    await MainActor.run { justFavoritedFeedback = false }
+                }
+            }
+            Task {
+                await favoritesVM.toggleFavorite(movieId: movie.id)
+            }
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(isFav ? theme.colors.rating.opacity(0.18) : Color.clear)
+                    .frame(width: 52, height: 52)
+                    .overlay(
+                        Circle()
+                            .stroke(isFav ? theme.colors.rating : theme.colors.textTertiary.opacity(0.5),
+                                    lineWidth: isFav ? 1.5 : 1)
+                    )
+                Image(systemName: isFav ? "star.fill" : "star")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(isFav ? theme.colors.rating : theme.colors.textSecondary)
+                    .scaleEffect(justFavoritedFeedback && !reduceMotion ? 1.2 : 1.0)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isFav ? "Aus Merkliste entfernen" : "Für später merken")
+        .animation(theme.motion.easeOutQuart, value: isFav)
+        .animation(theme.motion.easeOutQuart, value: justFavoritedFeedback)
     }
 }

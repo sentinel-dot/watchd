@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ForgotPasswordView: View {
+    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @State private var email = ""
     @State private var isLoading = false
@@ -10,68 +11,91 @@ struct ForgotPasswordView: View {
     @State private var isEmailFocused = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
-                WatchdTheme.background.ignoresSafeArea()
+                theme.colors.base.ignoresSafeArea()
 
-                VStack(spacing: 24) {
-                    VStack(spacing: 12) {
-                        Image(systemName: "lock.rotation")
-                            .font(WatchdTheme.iconLarge())
-                            .foregroundColor(WatchdTheme.primary)
-                        Text("Passwort vergessen?")
-                            .font(WatchdTheme.titleLarge())
-                            .foregroundColor(WatchdTheme.textPrimary)
-                        Text("Wir senden dir einen Link zum Zurücksetzen")
-                            .font(WatchdTheme.body())
-                            .foregroundColor(WatchdTheme.textSecondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.bottom, 12)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Nº 04 · Passwort")
+                                .font(theme.fonts.microCaption)
+                                .textCase(.uppercase)
+                                .tracking(1.8)
+                                .foregroundColor(theme.colors.accent)
+                            Text("Passwort vergessen?")
+                                .font(theme.fonts.display(size: 32, weight: .regular))
+                                .italic()
+                                .foregroundColor(theme.colors.textPrimary)
+                        }
+                        .padding(.bottom, 28)
 
-                    VStack(spacing: 18) {
+                        HStack(alignment: .top, spacing: 14) {
+                            Rectangle()
+                                .fill(theme.colors.accent)
+                                .frame(width: 2, height: 42)
+                            Text("Wir schicken dir einen Link per E-Mail.")
+                                .font(theme.fonts.body(size: 16, weight: .regular))
+                                .italic()
+                                .foregroundColor(theme.colors.textSecondary)
+                                .lineSpacing(3)
+                        }
+                        .padding(.bottom, 44)
+
                         AuthField(
-                            icon: "envelope.fill", placeholder: "E-Mail", text: $email,
+                            icon: "envelope", placeholder: "E-Mail", text: $email,
                             keyboardType: .emailAddress, textContentType: .emailAddress,
-                            returnKeyType: .send, onSubmit: { Task { await sendResetLink() } },
+                            returnKeyType: .send,
+                            onSubmit: { Task { await sendResetLink() } },
                             isFocused: $isEmailFocused
                         )
+                        .padding(.bottom, 20)
 
                         if let error = errorMessage {
                             Text(error)
-                                .font(WatchdTheme.caption())
-                                .foregroundColor(WatchdTheme.primary)
-                                .multilineTextAlignment(.center)
+                                .font(theme.fonts.caption)
+                                .foregroundColor(theme.colors.error)
+                                .padding(.bottom, 14)
                         }
 
                         if let success = successMessage {
-                            Text(success)
-                                .font(WatchdTheme.caption())
-                                .foregroundColor(WatchdTheme.success)
-                                .multilineTextAlignment(.center)
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(theme.colors.success)
+                                    .padding(.top, 2)
+                                Text(success)
+                                    .font(theme.fonts.caption)
+                                    .foregroundColor(theme.colors.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.bottom, 14)
                         }
 
                         PrimaryButton(title: "Link senden", isLoading: isLoading) {
                             Task { await sendResetLink() }
                         }
-                    }
-                    .padding(28)
-                    .background(WatchdTheme.backgroundCard)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal, 24)
 
-                    Spacer()
+                        Spacer(minLength: 60)
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 32)
                 }
-                .padding(.top, 60)
-                .ignoresSafeArea(.keyboard)
+                .scrollDismissesKeyboard(.interactively)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(WatchdTheme.background, for: .navigationBar)
+            .toolbarBackground(theme.colors.base, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Abbrechen") { dismiss() }
-                        .foregroundColor(WatchdTheme.textSecondary)
+                    Button(action: { dismiss() }) {
+                        Text("Abbrechen")
+                            .font(theme.fonts.microCaption)
+                            .textCase(.uppercase)
+                            .tracking(1.4)
+                            .foregroundColor(theme.colors.textSecondary)
+                    }
                 }
             }
         }
@@ -79,7 +103,7 @@ struct ForgotPasswordView: View {
 
     private func sendResetLink() async {
         guard !email.isEmpty else {
-            errorMessage = "Bitte E-Mail eingeben"
+            errorMessage = "E-Mail fehlt."
             return
         }
 
@@ -90,7 +114,7 @@ struct ForgotPasswordView: View {
 
         do {
             let _ = try await APIService.shared.forgotPassword(email: email)
-            successMessage = "Falls diese E-Mail registriert ist, wurde ein Reset-Link gesendet."
+            successMessage = "Falls ein Konto zu dieser Adresse existiert, ist der Link unterwegs."
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 dismiss()
             }
@@ -101,6 +125,7 @@ struct ForgotPasswordView: View {
 }
 
 struct ResetPasswordView: View {
+    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     let token: String
 
@@ -113,66 +138,85 @@ struct ResetPasswordView: View {
     @State private var isConfirmPasswordFocused = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
-                WatchdTheme.background.ignoresSafeArea()
+                theme.colors.base.ignoresSafeArea()
 
-                VStack(spacing: 24) {
-                    VStack(spacing: 12) {
-                        Image(systemName: "key.fill")
-                            .font(WatchdTheme.iconLarge())
-                            .foregroundColor(WatchdTheme.primary)
-                        Text("Neues Passwort")
-                            .font(WatchdTheme.titleLarge())
-                            .foregroundColor(WatchdTheme.textPrimary)
-                        Text("Wähle ein sicheres Passwort")
-                            .font(WatchdTheme.body())
-                            .foregroundColor(WatchdTheme.textSecondary)
-                    }
-                    .padding(.bottom, 12)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Nº 05 · Neu")
+                                .font(theme.fonts.microCaption)
+                                .textCase(.uppercase)
+                                .tracking(1.8)
+                                .foregroundColor(theme.colors.accent)
+                            Text("Neues Passwort.")
+                                .font(theme.fonts.display(size: 32, weight: .regular))
+                                .italic()
+                                .foregroundColor(theme.colors.textPrimary)
+                        }
+                        .padding(.bottom, 28)
 
-                    VStack(spacing: 18) {
-                        AuthField(
-                            icon: "lock.fill", placeholder: "Neues Passwort", text: $newPassword,
-                            isSecure: true, textContentType: .newPassword,
-                            returnKeyType: .next, onSubmit: { isConfirmPasswordFocused = true },
-                            isFocused: $isNewPasswordFocused
-                        )
-                        AuthField(
-                            icon: "lock.fill", placeholder: "Passwort bestätigen", text: $confirmPassword,
-                            isSecure: true, textContentType: .newPassword,
-                            returnKeyType: .done, onSubmit: { Task { await resetPassword() } },
-                            isFocused: $isConfirmPasswordFocused
-                        )
+                        HStack(alignment: .top, spacing: 14) {
+                            Rectangle()
+                                .fill(theme.colors.accent)
+                                .frame(width: 2, height: 42)
+                            Text("Mindestens acht Zeichen — der Rest liegt an dir.")
+                                .font(theme.fonts.body(size: 16, weight: .regular))
+                                .italic()
+                                .foregroundColor(theme.colors.textSecondary)
+                                .lineSpacing(3)
+                        }
+                        .padding(.bottom, 44)
+
+                        VStack(spacing: 4) {
+                            AuthField(
+                                icon: "lock", placeholder: "Neues Passwort", text: $newPassword,
+                                isSecure: true, textContentType: .newPassword,
+                                returnKeyType: .next, onSubmit: { isConfirmPasswordFocused = true },
+                                isFocused: $isNewPasswordFocused
+                            )
+                            AuthField(
+                                icon: "lock", placeholder: "Bestätigen", text: $confirmPassword,
+                                isSecure: true, textContentType: .newPassword,
+                                returnKeyType: .done,
+                                onSubmit: { Task { await resetPassword() } },
+                                isFocused: $isConfirmPasswordFocused
+                            )
+                        }
+                        .padding(.bottom, 20)
 
                         if let error = errorMessage {
                             Text(error)
-                                .font(WatchdTheme.caption())
-                                .foregroundColor(WatchdTheme.primary)
-                                .multilineTextAlignment(.center)
+                                .font(theme.fonts.caption)
+                                .foregroundColor(theme.colors.error)
+                                .padding(.bottom, 14)
                         }
 
                         PrimaryButton(title: "Passwort ändern", isLoading: isLoading) {
                             Task { await resetPassword() }
                         }
-                    }
-                    .padding(28)
-                    .background(WatchdTheme.backgroundCard)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal, 24)
 
-                    Spacer()
+                        Spacer(minLength: 60)
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 32)
                 }
-                .padding(.top, 60)
-                .ignoresSafeArea(.keyboard)
+                .scrollDismissesKeyboard(.interactively)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(WatchdTheme.background, for: .navigationBar)
+            .toolbarBackground(theme.colors.base, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Abbrechen") { dismiss() }
-                        .foregroundColor(WatchdTheme.textSecondary)
+                    Button(action: { dismiss() }) {
+                        Text("Abbrechen")
+                            .font(theme.fonts.microCaption)
+                            .textCase(.uppercase)
+                            .tracking(1.4)
+                            .foregroundColor(theme.colors.textSecondary)
+                    }
                 }
             }
         }
@@ -180,11 +224,11 @@ struct ResetPasswordView: View {
 
     private func resetPassword() async {
         guard newPassword.count >= 8 else {
-            errorMessage = "Passwort muss mindestens 8 Zeichen lang sein"
+            errorMessage = "Mindestens acht Zeichen, bitte."
             return
         }
         guard newPassword == confirmPassword else {
-            errorMessage = "Passwörter stimmen nicht überein"
+            errorMessage = "Die Passwörter stimmen nicht überein."
             return
         }
 
@@ -203,10 +247,12 @@ struct ResetPasswordView: View {
 
 #Preview("Forgot Password") {
     ForgotPasswordView()
+        .environment(\.theme, .velvetHour)
         .preferredColorScheme(.dark)
 }
 
 #Preview("Reset Password") {
     ResetPasswordView(token: "test-token")
+        .environment(\.theme, .velvetHour)
         .preferredColorScheme(.dark)
 }

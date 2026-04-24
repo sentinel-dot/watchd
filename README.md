@@ -23,7 +23,11 @@ watchd/
 ├── Vendor/                      # socket.io-client-swift 16.1.1 + Starscream 4.0.8
 ├── Config/
 │   ├── APIConfig.swift          # Base URLs — edit here to change backend
-│   └── WatchdTheme.swift        # Design system (colors, fonts, gradients)
+│   ├── Theme.swift              # Design system (colors, fonts, spacing, motion)
+│   ├── Color+Tokens.swift       # sRGB color tokens (OKLCH-designed)
+│   ├── ThemeEnvironment.swift   # @Environment(\.theme) EnvironmentKey
+│   ├── ThemeManager.swift       # @AppStorage-backed theme switcher
+│   └── FontRegistry.swift       # Bundle-font registration
 ├── Models/
 │   ├── AuthModels.swift
 │   ├── RoomModels.swift

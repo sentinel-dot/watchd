@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Shared filter content (used by RoomFiltersView and CreateRoomFiltersView)
 
 struct FilterOptionsView: View {
+    @Environment(\.theme) private var theme
     @Binding var filters: RoomFilters
     var showResetButton: Bool = true
     var onReset: (() -> Void)?
@@ -17,7 +18,7 @@ struct FilterOptionsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 32) {
                 activeSummary
 
                 genreSection
@@ -30,32 +31,41 @@ struct FilterOptionsView: View {
                     resetButton
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 32)
+            .padding(.horizontal, 28)
+            .padding(.top, 16)
+            .padding(.bottom, 40)
         }
     }
 
     private var activeSummary: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Aktive Filter")
-                .font(WatchdTheme.captionMedium())
-                .foregroundColor(WatchdTheme.textTertiary)
+        HStack(alignment: .top, spacing: 14) {
+            Rectangle()
+                .fill(theme.colors.accent)
+                .frame(width: 2)
+                .frame(minHeight: 42)
 
-            if hasAnyFilter {
-                Text(summaryText)
-                    .font(WatchdTheme.body())
-                    .foregroundColor(WatchdTheme.textSecondary)
-            } else {
-                Text("Keine Filter – zeig alle Filme")
-                    .font(WatchdTheme.body())
-                    .foregroundColor(WatchdTheme.textTertiary)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Aktive Auswahl")
+                    .font(theme.fonts.microCaption)
+                    .textCase(.uppercase)
+                    .tracking(1.4)
+                    .foregroundColor(theme.colors.textTertiary)
+
+                if hasAnyFilter {
+                    Text(summaryText)
+                        .font(theme.fonts.body(size: 16, weight: .regular))
+                        .italic()
+                        .foregroundColor(theme.colors.textSecondary)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("Keine Filter. Alles bleibt offen.")
+                        .font(theme.fonts.body(size: 16, weight: .regular))
+                        .italic()
+                        .foregroundColor(theme.colors.textTertiary)
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(WatchdTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var summaryText: String {
@@ -156,23 +166,23 @@ struct FilterOptionsView: View {
             resetFilters()
             onReset?()
         } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(WatchdTheme.iconSmall())
-                Text("Alle zurücksetzen")
-                    .font(WatchdTheme.bodyMedium())
-            }
-            .foregroundColor(WatchdTheme.textSecondary)
+            Text("Alles zurücksetzen")
+                .font(theme.fonts.microCaption)
+                .textCase(.uppercase)
+                .tracking(1.4)
+                .foregroundColor(theme.colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .padding(.top, 8)
     }
 
     private func filterSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(WatchdTheme.captionMedium())
-                .foregroundColor(WatchdTheme.textTertiary)
+                .font(theme.fonts.microCaption)
+                .textCase(.uppercase)
+                .tracking(1.6)
+                .foregroundColor(theme.colors.textTertiary)
             content()
         }
     }
@@ -203,6 +213,7 @@ struct FilterOptionsView: View {
 // MARK: - Filter chip (multi-select style)
 
 private struct FilterChip: View {
+    @Environment(\.theme) private var theme
     let title: String
     let isSelected: Bool
     let action: () -> Void
@@ -210,16 +221,17 @@ private struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(WatchdTheme.body())
-                .foregroundColor(isSelected ? WatchdTheme.textOnPrimary : WatchdTheme.textPrimary)
+                .font(theme.fonts.body(size: 14, weight: .regular))
+                .foregroundColor(isSelected ? theme.colors.textOnAccent : theme.colors.textPrimary)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(isSelected ? WatchdTheme.primary : WatchdTheme.backgroundCard)
+                .padding(.vertical, 9)
+                .background(isSelected ? theme.colors.accent : Color.clear)
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
-                        .stroke(isSelected ? Color.clear : WatchdTheme.separator, lineWidth: 1)
+                        .stroke(isSelected ? Color.clear : theme.colors.separator, lineWidth: 1)
                 )
+                .animation(theme.motion.easeOutQuart, value: isSelected)
         }
         .buttonStyle(.plain)
     }
@@ -268,6 +280,7 @@ private struct FlowLayout: Layout {
 // MARK: - Room filters (edit existing room)
 
 struct RoomFiltersView: View {
+    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     let roomId: Int
     @State private var filters: RoomFilters
@@ -280,46 +293,74 @@ struct RoomFiltersView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
-                WatchdTheme.background.ignoresSafeArea()
+                theme.colors.base.ignoresSafeArea()
 
                 VStack(spacing: 0) {
+                    editorialHeader
+                        .padding(.horizontal, 28)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+
                     FilterOptionsView(filters: $filters, showResetButton: true)
 
                     if let error = errorMessage {
                         Text(error)
-                            .font(WatchdTheme.caption())
-                            .foregroundColor(WatchdTheme.primary)
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 8)
+                            .font(theme.fonts.caption)
+                            .foregroundColor(theme.colors.error)
+                            .padding(.horizontal, 28)
+                            .padding(.bottom, 12)
                     }
                 }
             }
-            .navigationTitle("Filter")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(WatchdTheme.background, for: .navigationBar)
+            .toolbarBackground(theme.colors.base, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
-                        .foregroundColor(WatchdTheme.textSecondary)
+                    Button(action: { dismiss() }) {
+                        Text("Abbrechen")
+                            .font(theme.fonts.microCaption)
+                            .textCase(.uppercase)
+                            .tracking(1.4)
+                            .foregroundColor(theme.colors.textSecondary)
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isLoading {
                         ProgressView()
                             .progressViewStyle(.circular)
-                            .tint(WatchdTheme.primary)
+                            .tint(theme.colors.accent)
                             .scaleEffect(0.9)
                     } else {
-                        Button("Anwenden") {
-                            Task { await applyFilters() }
+                        Button(action: { Task { await applyFilters() } }) {
+                            Text("Anwenden")
+                                .font(theme.fonts.microCaption)
+                                .textCase(.uppercase)
+                                .tracking(1.4)
+                                .foregroundColor(theme.colors.accent)
                         }
-                        .foregroundColor(WatchdTheme.primary)
                     }
                 }
             }
         }
+    }
+
+    private var editorialHeader: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Nº 06 · Filter")
+                .font(theme.fonts.microCaption)
+                .textCase(.uppercase)
+                .tracking(1.8)
+                .foregroundColor(theme.colors.accent)
+
+            Text("Was heute Abend zählt.")
+                .font(theme.fonts.display(size: 28, weight: .regular))
+                .italic()
+                .foregroundColor(theme.colors.textPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func applyFilters() async {
@@ -402,5 +443,6 @@ enum StreamingService: String, CaseIterable, Identifiable {
 
 #Preview {
     RoomFiltersView(roomId: 1, currentFilters: nil)
+        .environment(\.theme, .velvetHour)
         .preferredColorScheme(.dark)
 }

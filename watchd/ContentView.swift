@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.theme) private var theme
     @EnvironmentObject private var authVM: AuthViewModel
     @State private var showResetPassword = false
     @State private var resetToken: String?
@@ -8,11 +9,9 @@ struct ContentView: View {
     var body: some View {
         Group {
             if authVM.isAuthenticated {
-                NavigationStack {
-                    HomeView()
-                }
-                .tint(WatchdTheme.primary)
-                .transition(.opacity)
+                MainTabView()
+                    .tint(theme.colors.accent)
+                    .transition(.opacity)
             } else {
                 AuthView()
                     .transition(.opacity)

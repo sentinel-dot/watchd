@@ -9,7 +9,6 @@ final class HomeViewModel: ObservableObject {
     @Published var navigateToSwipe = false
     @Published var selectedRoom: Room?
     @Published var joinCode = ""
-    @Published var showUpgradeAccount = false
     @Published var showCreateRoomSheet = false
     @Published var newRoomFilters: RoomFilters?
     @Published var newRoomName: String = ""

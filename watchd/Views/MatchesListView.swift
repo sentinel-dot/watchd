@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MatchesListView: View {
+    @Environment(\.theme) private var theme
     let roomId: Int
     @StateObject private var viewModel: MatchesViewModel
 
@@ -11,11 +12,12 @@ struct MatchesListView: View {
 
     var body: some View {
         ZStack {
-            WatchdTheme.background.ignoresSafeArea()
+            theme.colors.base.ignoresSafeArea()
 
             if viewModel.isLoading && viewModel.matches.isEmpty && !viewModel.hasLoadedOnce {
                 ProgressView()
                     .progressViewStyle(.circular)
+                    .tint(theme.colors.accent)
                     .scaleEffect(1.2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -33,7 +35,7 @@ struct MatchesListView: View {
                                 .buttonStyle(.plain)
                                 .padding(.vertical, 4)
                                 .padding(.horizontal, 0)
-                                .background(WatchdTheme.backgroundCard)
+                                .background(theme.colors.surfaceCard)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .task {
                                     await viewModel.loadMoreIfNeeded(currentMatch: match)
@@ -49,7 +51,7 @@ struct MatchesListView: View {
         .navigationTitle("Matches")
         .navigationBarTitleDisplayMode(.large)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbarBackground(WatchdTheme.background, for: .navigationBar)
+        .toolbarBackground(theme.colors.base, for: .navigationBar)
         .alert("Fehler", isPresented: $viewModel.showError) {
             Button("OK") {}
         } message: {
@@ -66,16 +68,16 @@ struct MatchesListView: View {
     private var emptyMatches: some View {
         VStack(spacing: 24) {
             Image(systemName: "heart.slash")
-                .font(WatchdTheme.emptyStateIcon())
-                .foregroundColor(WatchdTheme.textTertiary)
+                .font(.system(size: 56, weight: .light))
+                .foregroundColor(theme.colors.textTertiary)
 
             VStack(spacing: 8) {
                 Text("Noch keine Matches")
-                    .font(WatchdTheme.titleLarge())
-                    .foregroundColor(WatchdTheme.textPrimary)
+                    .font(theme.fonts.titleLarge)
+                    .foregroundColor(theme.colors.textPrimary)
                 Text("Weiter swipen für einen Match!")
-                    .font(WatchdTheme.caption())
-                    .foregroundColor(WatchdTheme.textSecondary)
+                    .font(theme.fonts.caption)
+                    .foregroundColor(theme.colors.textSecondary)
             }
         }
         .frame(maxWidth: .infinity)
@@ -83,9 +85,10 @@ struct MatchesListView: View {
     }
 }
 
-// MARK: - Match Row (Netflix-style)
+// MARK: - Match Row
 
 private struct MatchRow: View {
+    @Environment(\.theme) private var theme
     let match: Match
     @State private var isWatched: Bool
     @State private var isUpdating = false
@@ -102,7 +105,7 @@ private struct MatchRow: View {
                 case .success(let image):
                     image.resizable().scaledToFill()
                 default:
-                    WatchdTheme.backgroundInput
+                    theme.colors.surfaceInput
                 }
             }
             .frame(width: 70, height: 100)
@@ -111,24 +114,24 @@ private struct MatchRow: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(match.movie.title)
-                    .font(WatchdTheme.bodyMedium())
-                    .foregroundColor(WatchdTheme.textPrimary)
+                    .font(theme.fonts.bodyMedium)
+                    .foregroundColor(theme.colors.textPrimary)
                     .lineLimit(2)
-                    .strikethrough(isWatched, color: WatchdTheme.textTertiary)
+                    .strikethrough(isWatched, color: theme.colors.textTertiary)
 
                 HStack(spacing: 6) {
                     Image(systemName: "star.fill")
-                        .font(WatchdTheme.iconTiny())
-                        .foregroundColor(WatchdTheme.rating)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(theme.colors.rating)
                     Text(String(format: "%.1f", match.movie.voteAverage))
-                        .font(WatchdTheme.caption())
-                        .foregroundColor(WatchdTheme.textSecondary)
+                        .font(theme.fonts.caption)
+                        .foregroundColor(theme.colors.textSecondary)
                     if let year = match.movie.releaseYear {
                         Text("•")
-                            .foregroundColor(WatchdTheme.textTertiary)
+                            .foregroundColor(theme.colors.textTertiary)
                         Text(year)
-                            .font(WatchdTheme.caption())
-                            .foregroundColor(WatchdTheme.textTertiary)
+                            .font(theme.fonts.caption)
+                            .foregroundColor(theme.colors.textTertiary)
                     }
                 }
 
@@ -140,18 +143,18 @@ private struct MatchRow: View {
             Button(action: { toggleWatched() }) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(isWatched ? WatchdTheme.success.opacity(0.2) : WatchdTheme.backgroundInput)
+                        .fill(isWatched ? theme.colors.success.opacity(0.2) : theme.colors.surfaceInput)
                         .frame(width: 36, height: 36)
 
                     if isUpdating {
                         ProgressView()
                             .progressViewStyle(.circular)
                             .scaleEffect(0.7)
-                            .tint(WatchdTheme.textSecondary)
+                            .tint(theme.colors.textSecondary)
                     } else {
                         Image(systemName: isWatched ? "checkmark.circle.fill" : "circle")
-                            .font(WatchdTheme.iconMedium())
-                            .foregroundColor(isWatched ? WatchdTheme.success : WatchdTheme.textTertiary)
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(isWatched ? theme.colors.success : theme.colors.textTertiary)
                     }
                 }
             }
@@ -194,7 +197,7 @@ private struct MatchRow: View {
                         case .success(let img):
                             img.resizable().scaledToFit()
                         default:
-                            WatchdTheme.backgroundInput
+                            theme.colors.surfaceInput
                         }
                     }
                     .frame(width: 24, height: 24)
@@ -203,8 +206,10 @@ private struct MatchRow: View {
             }
         } else {
             Text("Nicht verfügbar")
-                .font(WatchdTheme.labelUppercase())
-                .foregroundColor(WatchdTheme.textTertiary)
+                .font(theme.fonts.microCaption)
+                .textCase(.uppercase)
+                .tracking(0.8)
+                .foregroundColor(theme.colors.textTertiary)
         }
     }
 

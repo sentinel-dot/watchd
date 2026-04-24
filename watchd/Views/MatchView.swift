@@ -5,87 +5,144 @@ struct MatchView: View {
     let roomId: Int
     let onDismiss: () -> Void
 
-    @State private var showMatches = false
+    @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var revealStage: Int = 0
+    @State private var bloomActive: Bool = false
+
+    // Reveal stages: 0 nothing, 1 headline, 2 subtitle, 3 poster, 4 title+meta, 5 providers, 6 ctas
+    private let stageDelays: [Double] = [0.0, 0.15, 0.30, 0.45, 0.60, 0.75]
 
     var body: some View {
         NavigationStack {
             ZStack {
-                WatchdTheme.background.ignoresSafeArea()
+                theme.colors.base.ignoresSafeArea()
 
-                ConfettiView()
+                if !reduceMotion {
+                    bloomLayer
+                        .ignoresSafeArea()
+                }
 
                 ScrollView {
                     VStack(spacing: 0) {
-                        VStack(spacing: 14) {
-                            Text("🎉")
-                                .font(WatchdTheme.placeholderPosterIcon())
-
-                            Text("Es ist ein Match!")
-                                .font(WatchdTheme.titleLarge())
-                                .foregroundColor(WatchdTheme.primary)
-
-                            Text("Ihr wollt beide diesen Film schauen")
-                                .font(WatchdTheme.body())
-                                .foregroundColor(WatchdTheme.textSecondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 40)
-                        }
-                        .padding(.top, 40)
-                        .padding(.bottom, 36)
-
-                        posterSection
-                            .padding(.bottom, 28)
-
-                        streamingSection
+                        headlineBlock
+                            .padding(.top, 32)
                             .padding(.bottom, 32)
 
-                        VStack(spacing: 14) {
-                            Button(action: onDismiss) {
-                                Text("Weiter swipen")
-                                    .font(WatchdTheme.bodyMedium())
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 18)
-                                    .background(WatchdTheme.primaryButtonGradient)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                            }
+                        posterBlock
+                            .padding(.bottom, 24)
 
-                            NavigationLink(destination: MatchesListView(roomId: roomId)) {
-                                Text("Alle Matches anzeigen")
-                                    .font(WatchdTheme.bodyMedium())
-                                    .foregroundColor(WatchdTheme.textPrimary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 18)
-                                    .background(WatchdTheme.backgroundCard)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(WatchdTheme.separator, lineWidth: 1)
-                                    )
-                            }
-                        }
-                        .padding(.horizontal, 28)
-                        .padding(.bottom, 44)
+                        titleBlock
+                            .padding(.horizontal, 32)
+                            .padding(.bottom, 24)
+
+                        providersBlock
+                            .padding(.horizontal, 28)
+                            .padding(.bottom, 36)
+
+                        actionsBlock
+                            .padding(.horizontal, 28)
+                            .padding(.bottom, 44)
                     }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(WatchdTheme.background, for: .navigationBar)
+            .toolbarBackground(theme.colors.base, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: onDismiss) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(WatchdTheme.titleMedium())
-                            .foregroundColor(WatchdTheme.textTertiary)
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(theme.colors.textTertiary)
+                    }
+                    .accessibilityLabel("Schließen")
+                }
+            }
+        }
+        .onAppear(perform: triggerHeroMoment)
+    }
+
+    // MARK: - Hero orchestration
+
+    private func triggerHeroMoment() {
+        triggerSensoryFeedback()
+
+        if reduceMotion {
+            // Opacity-only reveal, alles sofort sichtbar
+            revealStage = 6
+            return
+        }
+
+        withAnimation(theme.motion.easeOutExpo) {
+            bloomActive = true
+        }
+
+        for (index, delay) in stageDelays.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                withAnimation(theme.motion.easeOutQuart) {
+                    if revealStage < index + 1 {
+                        revealStage = index + 1
                     }
                 }
             }
         }
     }
 
-    private var posterSection: some View {
-        VStack(spacing: 16) {
+    private func triggerSensoryFeedback() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    private func isRevealed(stage: Int) -> Bool {
+        reduceMotion || revealStage >= stage
+    }
+
+    // MARK: - Bloom
+
+    private var bloomLayer: some View {
+        GeometryReader { geo in
+            RadialGradient(
+                colors: [
+                    theme.colors.accent.opacity(0.55),
+                    theme.colors.accent.opacity(0.12),
+                    .clear
+                ],
+                center: .center,
+                startRadius: 0,
+                endRadius: max(geo.size.width, geo.size.height) * 0.8
+            )
+            .scaleEffect(bloomActive ? 1.25 : 0.3)
+            .opacity(bloomActive ? 0.0 : 0.85)
+        }
+        .allowsHitTesting(false)
+    }
+
+    // MARK: - Headline
+
+    private var headlineBlock: some View {
+        VStack(spacing: 10) {
+            Text("Match.")
+                .font(theme.fonts.display(size: 56, weight: .regular))
+                .italic()
+                .foregroundColor(theme.colors.accent)
+                .opacity(isRevealed(stage: 1) ? 1 : 0)
+                .offset(y: isRevealed(stage: 1) ? 0 : 12)
+
+            Text("Ihr wollt beide diesen Film schauen.")
+                .font(theme.fonts.bodyRegular)
+                .foregroundColor(theme.colors.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+                .opacity(isRevealed(stage: 2) ? 1 : 0)
+                .offset(y: isRevealed(stage: 2) ? 0 : 8)
+        }
+    }
+
+    // MARK: - Poster
+
+    private var posterBlock: some View {
+        Group {
             if let url = match.posterURL {
                 AsyncImage(url: url) { phase in
                     switch phase {
@@ -95,56 +152,104 @@ struct MatchView: View {
                             .scaledToFit()
                             .frame(height: 320)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .shadow(color: .black.opacity(0.4), radius: 24, y: 12)
+                            .shadow(color: .black.opacity(0.5), radius: 30, y: 14)
                     default:
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(WatchdTheme.backgroundCard)
-                            .frame(width: 200, height: 320)
+                            .fill(theme.colors.surfaceCard)
+                            .frame(width: 210, height: 320)
                     }
                 }
             }
+        }
+        .opacity(isRevealed(stage: 3) ? 1 : 0)
+        .scaleEffect(isRevealed(stage: 3) ? 1.0 : 0.96)
+    }
 
+    // MARK: - Title Block
+
+    private var titleBlock: some View {
+        VStack(spacing: 8) {
             Text(match.movieTitle)
-                .font(WatchdTheme.titleMedium())
-                .foregroundColor(WatchdTheme.textPrimary)
+                .font(theme.fonts.titleLarge)
+                .foregroundColor(theme.colors.textPrimary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .opacity(isRevealed(stage: 4) ? 1 : 0)
+        .offset(y: isRevealed(stage: 4) ? 0 : 6)
+    }
+
+    // MARK: - Providers
+
+    @ViewBuilder
+    private var providersBlock: some View {
+        if !match.streamingOptions.isEmpty {
+            VStack(spacing: 14) {
+                Text("Verfügbar bei")
+                    .font(theme.fonts.microCaption)
+                    .tracking(1.4)
+                    .textCase(.uppercase)
+                    .foregroundColor(theme.colors.textTertiary)
+
+                MatchProviderStrip(options: match.streamingOptions)
+            }
+            .opacity(isRevealed(stage: 5) ? 1 : 0)
+            .offset(y: isRevealed(stage: 5) ? 0 : 8)
+        } else {
+            VStack(spacing: 8) {
+                Text("Streaming-Infos folgen")
+                    .font(theme.fonts.microCaption)
+                    .tracking(1.4)
+                    .textCase(.uppercase)
+                    .foregroundColor(theme.colors.textTertiary)
+                Text("Für diesen Film liegen aktuell keine Streaming-Daten vor.")
+                    .font(theme.fonts.caption)
+                    .foregroundColor(theme.colors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            .opacity(isRevealed(stage: 5) ? 1 : 0)
         }
     }
 
-    private var streamingSection: some View {
-        VStack(spacing: 16) {
-            if !match.streamingOptions.isEmpty {
-                Text("VERFÜGBAR BEI")
-                    .font(WatchdTheme.labelUppercase())
-                    .foregroundColor(WatchdTheme.textTertiary)
-                    .tracking(0.5)
+    // MARK: - CTAs
 
-                StreamingBadgesGrid(options: match.streamingOptions)
-                    .padding(.horizontal, 32)
-            } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "questionmark.circle.fill")
-                        .font(WatchdTheme.titleMedium())
-                        .foregroundColor(WatchdTheme.textTertiary)
-                    Text("Keine Streaming-Infos verfügbar")
-                        .font(WatchdTheme.bodyMedium())
-                        .foregroundColor(WatchdTheme.textSecondary)
-                    Text("Für diesen Film liegen aktuell keine Streaming-Daten vor.")
-                        .font(WatchdTheme.caption())
-                        .foregroundColor(WatchdTheme.textTertiary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
+    private var actionsBlock: some View {
+        VStack(spacing: 12) {
+            Button(action: onDismiss) {
+                Text("Weiter schauen")
+                    .font(theme.fonts.bodyMedium)
+                    .foregroundColor(theme.colors.textOnAccent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 17)
+                    .background(theme.colors.primaryButtonGradient)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
+            .buttonStyle(.plain)
+
+            NavigationLink(destination: MatchesListView(roomId: roomId)) {
+                Text("Alle Matches")
+                    .font(theme.fonts.bodyMedium)
+                    .foregroundColor(theme.colors.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 17)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(theme.colors.separator, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
         }
+        .opacity(isRevealed(stage: 6) ? 1 : 0)
+        .offset(y: isRevealed(stage: 6) ? 0 : 6)
     }
 }
 
-// MARK: - Streaming Badges Grid (Netflix-style)
+// MARK: - Provider Strip (Match hero)
 
-struct StreamingBadgesGrid: View {
+private struct MatchProviderStrip: View {
     let options: [StreamingOption]
+    @Environment(\.theme) private var theme
 
     private var uniqueProviders: [StreamingOption] {
         var seen = Set<String>()
@@ -152,121 +257,55 @@ struct StreamingBadgesGrid: View {
     }
 
     var body: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 14), count: 3)
-
-        LazyVGrid(columns: columns, spacing: 18) {
-            ForEach(uniqueProviders.prefix(6)) { option in
-                StreamingBadge(option: option)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(uniqueProviders.prefix(6)) { option in
+                    ProviderChip(option: option)
+                }
             }
+            .padding(.horizontal, 4)
         }
     }
 }
 
-struct StreamingBadge: View {
+private struct ProviderChip: View {
     let option: StreamingOption
-
-    private static let badgeHeight: CGFloat = 118
+    @Environment(\.theme) private var theme
 
     var body: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 10) {
             AsyncImage(url: option.package.iconURL) { phase in
                 switch phase {
                 case .success(let image):
                     image
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 52, height: 52)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .frame(width: 28, height: 28)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 default:
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(WatchdTheme.backgroundInput)
-                        .frame(width: 52, height: 52)
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(theme.colors.surfaceInput)
+                        .frame(width: 28, height: 28)
                         .overlay(
                             Image(systemName: "play.rectangle.fill")
-                                .foregroundColor(WatchdTheme.textTertiary.opacity(0.5))
+                                .font(.system(size: 12))
+                                .foregroundColor(theme.colors.textTertiary.opacity(0.5))
                         )
                 }
             }
 
             Text(option.package.clearName)
-                .font(WatchdTheme.labelUppercase())
-                .foregroundColor(WatchdTheme.textSecondary)
+                .font(theme.fonts.body(size: 13, weight: .medium))
+                .foregroundColor(theme.colors.textPrimary)
                 .lineLimit(1)
-                .truncationMode(.tail)
-                .multilineTextAlignment(.center)
         }
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity)
-        .frame(height: Self.badgeHeight)
-        .background(WatchdTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(theme.colors.surfaceCard)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(WatchdTheme.separator, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(theme.colors.separator, lineWidth: 1)
         )
-    }
-}
-
-// MARK: - Confetti (Netflix red + accent colors)
-
-struct ConfettiView: View {
-    private let particles: [ConfettiParticle] = (0..<120).map { _ in ConfettiParticle() }
-
-    var body: some View {
-        TimelineView(.animation) { timeline in
-            Canvas { context, size in
-                let now = timeline.date.timeIntervalSinceReferenceDate
-                for particle in particles {
-                    let cycleLength = particle.duration
-                    let offsetTime = now + particle.startOffset
-                    let progress = offsetTime.truncatingRemainder(dividingBy: cycleLength) / cycleLength
-
-                    let x = particle.xRatio * size.width + sin(progress * .pi * 5 + particle.phase) * particle.wobble
-                    let y = (progress * (size.height + 100)) - 50
-
-                    var ctx = context
-                    ctx.translateBy(x: x, y: y)
-                    ctx.rotate(by: Angle(radians: progress * .pi * 4 * particle.spin))
-
-                    let rect = CGRect(x: -particle.size / 2, y: -particle.size * 0.4,
-                                      width: particle.size, height: particle.size * 0.7)
-                    ctx.opacity = progress < 0.1 ? progress * 10 : (progress > 0.85 ? (1 - progress) * 6.67 : 1)
-                    ctx.fill(Path(rect), with: .color(particle.color))
-                }
-            }
-        }
-        .allowsHitTesting(false)
-        .ignoresSafeArea()
-    }
-}
-
-struct ConfettiParticle {
-    let xRatio: Double
-    let size: Double
-    let color: Color
-    let duration: Double
-    let phase: Double
-    let spin: Double
-    let wobble: Double
-    let startOffset: Double
-
-    private static let colors: [Color] = [
-        WatchdTheme.primary,
-        WatchdTheme.rating,
-        WatchdTheme.success,
-        Color(red: 0.30, green: 0.50, blue: 0.90),
-        Color(red: 0.90, green: 0.40, blue: 0.60),
-        WatchdTheme.textSecondary
-    ]
-
-    init() {
-        xRatio = Double.random(in: 0...1)
-        size = Double.random(in: 8...16)
-        color = Self.colors.randomElement()!
-        duration = Double.random(in: 3.0...5.0)
-        phase = Double.random(in: 0...(2 * .pi))
-        spin = Double.random(in: 0.6...2.8) * (Bool.random() ? 1.0 : -1.0)
-        wobble = Double.random(in: 25...60)
-        startOffset = Double.random(in: 0...5.0)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }

@@ -5,6 +5,7 @@ struct MovieCardView: View {
     let dragOffset: CGSize
     let isTopCard: Bool
 
+    @Environment(\.theme) private var theme
     @State private var isOverviewExpanded = false
 
     private var likeOpacity: Double {
@@ -22,104 +23,113 @@ struct MovieCardView: View {
             ZStack(alignment: .bottom) {
                 posterImage(size: geo.size)
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
                     Spacer()
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 10) {
                         Text(movie.title)
-                            .font(WatchdTheme.titleMedium())
+                            .font(theme.fonts.display(size: 30, weight: .regular))
                             .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+                            .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
                             .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                        HStack(spacing: 8) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "star.fill")
-                                    .font(WatchdTheme.inlineIconSmall())
-                                    .foregroundColor(WatchdTheme.rating)
-                                Text(String(format: "%.1f", movie.voteAverage))
-                                    .font(WatchdTheme.captionMedium())
-                                    .foregroundColor(.white)
-                            }
-
-                            if let year = movie.releaseYear {
-                                Text("•")
-                                    .foregroundColor(.white.opacity(0.5))
-                                Text(year)
-                                    .font(WatchdTheme.caption())
-                                    .foregroundColor(.white.opacity(0.9))
-                            }
-                        }
+                        metaRow
 
                         Group {
                             if isOverviewExpanded {
                                 ScrollView {
                                     Text(movie.overview)
-                                        .font(WatchdTheme.caption())
-                                        .foregroundColor(.white.opacity(0.9))
+                                        .font(theme.fonts.body(size: 14, weight: .regular))
+                                        .italic()
+                                        .foregroundColor(.white.opacity(0.92))
                                         .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+                                        .lineSpacing(4)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
-                                .frame(maxHeight: 140)
+                                .frame(maxHeight: 160)
                                 .scrollIndicators(.hidden)
                                 .transition(.opacity)
                             } else {
                                 Text(movie.overview)
-                                    .font(WatchdTheme.caption())
-                                    .foregroundColor(.white.opacity(0.9))
+                                    .font(theme.fonts.body(size: 14, weight: .regular))
+                                    .italic()
+                                    .foregroundColor(.white.opacity(0.92))
                                     .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+                                    .lineSpacing(3)
                                     .lineLimit(3)
                                     .transition(.opacity)
                             }
                         }
-                        .animation(.spring(response: 0.58, dampingFraction: 0.8), value: isOverviewExpanded)
-                        .padding(.top, 2)
+                        .animation(theme.motion.easeOutQuart, value: isOverviewExpanded)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.spring(response: 0.58, dampingFraction: 0.8)) {
+                            withAnimation(theme.motion.easeOutQuart) {
                                 isOverviewExpanded.toggle()
                             }
                         }
 
                         if !movie.streamingOptions.isEmpty {
                             StreamingPillsRow(options: movie.streamingOptions)
-                                .padding(.top, 6)
+                                .padding(.top, 4)
                         } else {
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.circle.fill")
-                                    .font(WatchdTheme.inlineIconTiny())
-                                Text("Nicht auf Streaming-Diensten verfügbar")
-                                    .font(WatchdTheme.labelUppercase())
-                            }
-                            .foregroundColor(.white.opacity(0.6))
-                            .padding(.top, 6)
+                            Text("Nicht auf Streaming-Diensten")
+                                .font(theme.fonts.microCaption)
+                                .tracking(1.2)
+                                .textCase(.uppercase)
+                                .foregroundColor(.white.opacity(0.55))
+                                .padding(.top, 6)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(WatchdTheme.heroBottomGradient)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 22)
+                    .background(theme.colors.heroBottomGradient)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 if isTopCard {
                     HStack {
-                        overlayBadge(text: "GEFÄLLT", color: WatchdTheme.success, rotation: -12)
+                        overlayBadge(text: "Gefällt", color: theme.colors.success, rotation: -3)
                             .opacity(likeOpacity)
-                            .padding(.leading, 28)
-                            .padding(.top, 50)
+                            .padding(.leading, 24)
+                            .padding(.top, 40)
 
                         Spacer()
 
-                        overlayBadge(text: "NEIN", color: WatchdTheme.primary, rotation: 12)
+                        overlayBadge(text: "Nein", color: theme.colors.error, rotation: 3)
                             .opacity(nopeOpacity)
-                            .padding(.trailing, 28)
-                            .padding(.top, 50)
+                            .padding(.trailing, 24)
+                            .padding(.top, 40)
                     }
                     .frame(maxHeight: .infinity, alignment: .top)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
         }
+    }
+
+    private var metaRow: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 4) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(theme.colors.rating)
+                Text(String(format: "%.1f", movie.voteAverage))
+                    .font(theme.fonts.body(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+
+            if let year = movie.releaseYear {
+                Text("·")
+                    .font(theme.fonts.body(size: 12, weight: .regular))
+                    .foregroundColor(.white.opacity(0.5))
+                Text(year)
+                    .font(theme.fonts.body(size: 12, weight: .regular))
+                    .foregroundColor(.white.opacity(0.85))
+            }
+        }
+        .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
     }
 
     @ViewBuilder
@@ -137,9 +147,9 @@ struct MovieCardView: View {
                     placeholderPoster(size: size)
                 case .empty:
                     ZStack {
-                        WatchdTheme.backgroundCard
+                        theme.colors.surfaceCard
                         ProgressView()
-                            .tint(WatchdTheme.primary)
+                            .tint(theme.colors.accent)
                     }
                     .frame(width: size.width, height: size.height)
                 @unknown default:
@@ -153,31 +163,37 @@ struct MovieCardView: View {
 
     private func placeholderPoster(size: CGSize) -> some View {
         ZStack {
-            WatchdTheme.backgroundCard
+            theme.colors.surfaceCard
             Image(systemName: "film")
-                .font(WatchdTheme.placeholderPosterIcon())
-                .foregroundColor(WatchdTheme.textTertiary.opacity(0.4))
+                .font(.system(size: 56, weight: .light))
+                .foregroundColor(theme.colors.textTertiary.opacity(0.4))
         }
         .frame(width: size.width, height: size.height)
     }
 
     private func overlayBadge(text: String, color: Color, rotation: Double) -> some View {
         Text(text)
-            .font(WatchdTheme.overlayBadge())
+            .font(theme.fonts.microCaption)
+            .tracking(2.0)
+            .textCase(.uppercase)
             .foregroundColor(color)
-            .padding(.horizontal, 18)
+            .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .shadow(color: color.opacity(0.5), radius: 10, y: 4)
+            .background(Color.white.opacity(0.95))
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(color.opacity(0.6), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 4))
             .rotationEffect(.degrees(rotation))
     }
 }
 
-// MARK: - Streaming Pills (Netflix-style)
+// MARK: - Streaming Pills (typographic)
 
 struct StreamingPillsRow: View {
     let options: [StreamingOption]
+    @Environment(\.theme) private var theme
 
     private var flatrate: [StreamingOption] {
         options.filter { $0.monetizationType.uppercased() == "FLATRATE" }
@@ -202,16 +218,18 @@ struct StreamingPillsRow: View {
                                     Color.clear
                                 }
                             }
-                            .frame(width: 20, height: 20)
+                            .frame(width: 18, height: 18)
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                         }
                         Text(option.package.clearName)
-                            .font(WatchdTheme.labelUppercase())
-                            .foregroundColor(WatchdTheme.textPrimary)
+                            .font(theme.fonts.microCaption)
+                            .tracking(1.2)
+                            .textCase(.uppercase)
+                            .foregroundColor(.white.opacity(0.9))
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(WatchdTheme.overlayLight)
+                    .background(theme.colors.overlayLight)
                     .clipShape(Capsule())
                 }
             }

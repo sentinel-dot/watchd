@@ -1,60 +1,74 @@
 import SwiftUI
 
 struct ArchivedRoomsView: View {
+    @Environment(\.theme) private var theme
     @EnvironmentObject private var authVM: AuthViewModel
     @StateObject private var viewModel = ArchivedRoomsViewModel()
 
     var body: some View {
         ZStack {
-            WatchdTheme.background.ignoresSafeArea()
+            theme.colors.base.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                if viewModel.isLoading && viewModel.archivedRooms.isEmpty && !viewModel.hasLoadedOnce {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .scaleEffect(1.2)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.archivedRooms.isEmpty {
-                    VStack(spacing: 24) {
-                        Image(systemName: "archivebox")
-                            .font(WatchdTheme.emptyStateIcon())
-                            .foregroundColor(WatchdTheme.textTertiary)
-
-                        VStack(spacing: 8) {
-                            Text("Keine archivierten Rooms")
-                                .font(WatchdTheme.titleLarge())
-                                .foregroundColor(WatchdTheme.textPrimary)
-                            Text("Beendete Rooms erscheinen hier")
-                                .font(WatchdTheme.caption())
-                                .foregroundColor(WatchdTheme.textSecondary)
-                        }
-                    }
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 14) {
-                            ForEach(viewModel.archivedRooms) { room in
-                                ArchivedRoomCard(room: room) {
+            if viewModel.isLoading && viewModel.archivedRooms.isEmpty && !viewModel.hasLoadedOnce {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(theme.colors.accent)
+                    .scaleEffect(1.1)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if viewModel.archivedRooms.isEmpty {
+                emptyState
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(viewModel.archivedRooms.enumerated()), id: \.element.id) { index, room in
+                            ArchivedRoomRow(
+                                room: room,
+                                ordinal: index + 1,
+                                onDelete: {
                                     Task { await viewModel.deleteFromArchive(room: room) }
                                 }
+                            )
+
+                            if index < viewModel.archivedRooms.count - 1 {
+                                Rectangle()
+                                    .fill(theme.colors.separator)
+                                    .frame(height: 1)
+                                    .padding(.horizontal, 24)
                             }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
-                        .padding(.bottom, 40)
                     }
+                    .padding(.vertical, 8)
+                    .padding(.bottom, 40)
                 }
             }
         }
-        .navigationTitle("Archivierte Rooms")
+        .navigationTitle("Archiv")
         .navigationBarTitleDisplayMode(.large)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbarBackground(WatchdTheme.background, for: .navigationBar)
+        .toolbarBackground(theme.colors.base, for: .navigationBar)
         .task {
             await viewModel.loadArchivedRooms()
         }
         .refreshable {
             await viewModel.loadArchivedRooms()
         }
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Noch kein Archiv.")
+                .font(theme.fonts.titleMedium)
+                .foregroundColor(theme.colors.textPrimary)
+
+            Text("Räume, die du beendet hast,\nlegen sich hier ab.")
+                .font(theme.fonts.bodyRegular)
+                .foregroundColor(theme.colors.textSecondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 28)
+        .padding(.top, 48)
     }
 }
 
@@ -90,11 +104,24 @@ final class ArchivedRoomsViewModel: ObservableObject {
     }
 }
 
-private struct ArchivedRoomCard: View {
+// MARK: - Editorial archived row
+
+private struct ArchivedRoomRow: View {
+    @Environment(\.theme) private var theme
     let room: Room
+    let ordinal: Int
     let onDelete: () -> Void
 
     @State private var showDeleteConfirm = false
+
+    private var displayName: String {
+        if let name = room.name, !name.isEmpty { return name }
+        return "Unbenannter Raum"
+    }
+
+    private var ordinalString: String {
+        String(format: "Nº %02d", ordinal)
+    }
 
     private var formattedDate: String {
         let formatter = ISO8601DateFormatter()
@@ -107,80 +134,90 @@ private struct ArchivedRoomCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    if let name = room.name, !name.isEmpty {
-                        Text(name)
-                            .font(WatchdTheme.titleSmall())
-                            .foregroundColor(WatchdTheme.textPrimary)
-                    } else {
-                        Text("Room #\(room.id)")
-                            .font(WatchdTheme.titleSmall())
-                            .foregroundColor(WatchdTheme.textPrimary)
-                    }
+        NavigationLink {
+            MatchesListView(roomId: room.id)
+        } label: {
+            HStack(alignment: .top, spacing: 18) {
+                Text(ordinalString)
+                    .font(theme.fonts.display(size: 22, weight: .regular))
+                    .foregroundColor(theme.colors.textTertiary)
+                    .frame(minWidth: 48, alignment: .leading)
+                    .padding(.top, 4)
 
-                    Text("Code: \(room.code)")
-                        .font(WatchdTheme.captionMedium())
-                        .foregroundColor(WatchdTheme.textTertiary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(displayName)
+                        .font(theme.fonts.titleMedium)
+                        .foregroundColor(theme.colors.textPrimary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
 
-                    HStack(spacing: 4) {
-                        Image(systemName: "archivebox")
-                            .font(WatchdTheme.inlineIconTiny())
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(theme.colors.textTertiary)
+                            .frame(width: 6, height: 6)
                         Text("Archiviert")
-                            .font(WatchdTheme.captionMedium())
+                            .font(theme.fonts.microCaption)
+                            .tracking(1.0)
+                            .textCase(.uppercase)
+                            .foregroundColor(theme.colors.textSecondary)
+
+                        if !formattedDate.isEmpty {
+                            Text("·")
+                                .foregroundColor(theme.colors.textTertiary)
+                            Text(formattedDate)
+                                .font(theme.fonts.microCaption)
+                                .tracking(1.0)
+                                .textCase(.uppercase)
+                                .foregroundColor(theme.colors.textTertiary)
+                        }
                     }
-                    .foregroundColor(WatchdTheme.textTertiary)
-                    .padding(.top, 2)
 
-                    if !formattedDate.isEmpty {
-                        Text("Erstellt am \(formattedDate)")
-                            .font(WatchdTheme.labelUppercase())
-                            .foregroundColor(WatchdTheme.textTertiary)
+                    HStack(spacing: 6) {
+                        Text("Code")
+                            .font(theme.fonts.microCaption)
+                            .tracking(1.0)
+                            .textCase(.uppercase)
+                            .foregroundColor(theme.colors.textTertiary)
+                        Text(room.code)
+                            .font(theme.fonts.body(size: 13, weight: .semibold))
+                            .tracking(1.4)
+                            .foregroundColor(theme.colors.textSecondary)
                     }
                 }
 
-                Spacer()
-
-                Button {
-                    showDeleteConfirm = true
-                } label: {
-                    Image(systemName: "trash")
-                        .font(WatchdTheme.inlineIconSmall())
-                        .foregroundColor(WatchdTheme.textTertiary)
-                }
-                .buttonStyle(.plain)
+                Spacer(minLength: 0)
             }
-
-            NavigationLink {
-                MatchesListView(roomId: room.id)
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "heart.fill")
-                        .font(WatchdTheme.inlineIconSmall())
-                    Text("Matches anzeigen")
-                        .font(WatchdTheme.captionMedium())
-                }
-                .foregroundColor(WatchdTheme.primary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(WatchdTheme.primary.opacity(0.2))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 22)
+            .contentShape(Rectangle())
+            .opacity(0.75)
         }
-        .padding(18)
-        .background(WatchdTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(WatchdTheme.separator, lineWidth: 1)
-        )
-        .confirmationDialog("Room löschen?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(displayName), archiviert")
+        .accessibilityAddTraits(.isButton)
+        .contextMenu {
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label("Aus Archiv löschen", systemImage: "trash")
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label("Löschen", systemImage: "trash")
+            }
+        }
+        .confirmationDialog(
+            "Aus Archiv löschen?",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
             Button("Löschen", role: .destructive) { onDelete() }
             Button("Abbrechen", role: .cancel) {}
         } message: {
-            Text("Der Room wird aus deiner Archivliste entfernt.")
+            Text("Der Raum verschwindet aus deiner Archivliste. Die Matches bleiben.")
         }
     }
 }
@@ -190,5 +227,6 @@ private struct ArchivedRoomCard: View {
         ArchivedRoomsView()
             .environmentObject(AuthViewModel.shared)
     }
+    .environment(\.theme, .velvetHour)
     .preferredColorScheme(.dark)
 }

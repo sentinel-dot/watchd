@@ -1,28 +1,29 @@
 import SwiftUI
 
 struct GuestUpgradePromptSheet: View {
+    @Environment(\.theme) private var theme
     let onUpgrade: () -> Void
     let onDismiss: () -> Void
 
     var body: some View {
         ZStack {
-            WatchdTheme.background.ignoresSafeArea()
+            theme.colors.base.ignoresSafeArea()
 
             VStack(spacing: 24) {
                 Spacer()
 
                 Image(systemName: "lock.shield")
-                    .font(.system(size: 56, weight: .semibold))
-                    .foregroundColor(WatchdTheme.primary)
+                    .font(.system(size: 56, weight: .light))
+                    .foregroundColor(theme.colors.accent)
 
                 Text("Sichere deine Matches")
-                    .font(WatchdTheme.titleLarge())
-                    .foregroundColor(WatchdTheme.textPrimary)
+                    .font(theme.fonts.titleLarge)
+                    .foregroundColor(theme.colors.textPrimary)
                     .multilineTextAlignment(.center)
 
                 Text("Du bist gerade als Gast eingeloggt. Wenn du dich ausloggst oder die App neu installierst, gehen alle Matches und Favoriten verloren. Leg ein Konto an, um sie dauerhaft zu sichern — dauert 20 Sekunden.")
-                    .font(WatchdTheme.body())
-                    .foregroundColor(WatchdTheme.textSecondary)
+                    .font(theme.fonts.bodyRegular)
+                    .foregroundColor(theme.colors.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
 
@@ -31,18 +32,18 @@ struct GuestUpgradePromptSheet: View {
                 VStack(spacing: 12) {
                     Button(action: onUpgrade) {
                         Text("Jetzt sichern")
-                            .font(WatchdTheme.bodyMedium())
-                            .foregroundColor(WatchdTheme.textOnPrimary)
+                            .font(theme.fonts.bodyMedium)
+                            .foregroundColor(theme.colors.textOnAccent)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(WatchdTheme.primaryButtonGradient)
+                            .background(theme.colors.primaryButtonGradient)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
 
                     Button(action: onDismiss) {
                         Text("Später")
-                            .font(WatchdTheme.bodyMedium())
-                            .foregroundColor(WatchdTheme.textSecondary)
+                            .font(theme.fonts.bodyMedium)
+                            .foregroundColor(theme.colors.textSecondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                     }
