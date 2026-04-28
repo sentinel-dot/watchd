@@ -11,6 +11,12 @@ struct NativeTextField: UIViewRepresentable {
     var isSecure: Bool = false
     var textContentType: UITextContentType? = nil
     var returnKeyType: UIReturnKeyType = .done
+    var autocapitalizationType: UITextAutocapitalizationType = .none
+    var autocorrectionType: UITextAutocorrectionType = .no
+    var spellCheckingType: UITextSpellCheckingType = .no
+    var accessibilityLabel: String? = nil
+    var accessibilityHint: String? = nil
+    var passwordRulesDescriptor: String? = nil
     var uiFont: UIFont = .systemFont(ofSize: 15)
     var textColor: UIColor = .white
     var placeholderColor: UIColor = UIColor(red: 0.55, green: 0.55, blue: 0.55, alpha: 1)
@@ -26,14 +32,19 @@ struct NativeTextField: UIViewRepresentable {
         tf.isSecureTextEntry = isSecure
         tf.textContentType = textContentType
         tf.returnKeyType = returnKeyType
-        tf.autocorrectionType = .no
-        tf.autocapitalizationType = .none
+        tf.autocapitalizationType = autocapitalizationType
+        tf.autocorrectionType = autocorrectionType
+        tf.spellCheckingType = spellCheckingType
+        tf.smartQuotesType = .no
+        tf.smartDashesType = .no
+        tf.enablesReturnKeyAutomatically = true
         tf.font = uiFont
         tf.textColor = textColor
         tf.attributedPlaceholder = NSAttributedString(
             string: placeholder,
             attributes: [.foregroundColor: placeholderColor]
         )
+        tf.accessibilityTraits.insert(.updatesFrequently)
         tf.setContentHuggingPriority(.defaultLow, for: .horizontal)
         tf.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         tf.setContentHuggingPriority(.required, for: .vertical)
@@ -48,6 +59,16 @@ struct NativeTextField: UIViewRepresentable {
         context.coordinator.parent = self
 
         if uiView.text != text { uiView.text = text }
+        uiView.keyboardType = keyboardType
+        uiView.isSecureTextEntry = isSecure
+        uiView.textContentType = textContentType
+        uiView.returnKeyType = returnKeyType
+        uiView.autocapitalizationType = autocapitalizationType
+        uiView.autocorrectionType = autocorrectionType
+        uiView.spellCheckingType = spellCheckingType
+        uiView.accessibilityLabel = accessibilityLabel ?? placeholder
+        uiView.accessibilityHint = accessibilityHint
+        uiView.passwordRules = passwordRulesDescriptor.map(UITextInputPasswordRules.init(descriptor:))
 
         if let isFocused {
             if isFocused.wrappedValue, !uiView.isFirstResponder {

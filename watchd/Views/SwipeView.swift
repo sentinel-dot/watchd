@@ -4,8 +4,6 @@ struct SwipeView: View {
     @StateObject private var viewModel: SwipeViewModel
     @StateObject private var favoritesVM = FavoritesViewModel()
     @State private var justFavoritedFeedback = false
-    @State private var showUpgradeAccount = false
-    @State private var upgradePendingAfterPromptDismiss = false
     @EnvironmentObject private var authVM: AuthViewModel
     @EnvironmentObject private var networkMonitor: NetworkMonitor
     @Environment(\.scenePhase) private var scenePhase
@@ -13,21 +11,12 @@ struct SwipeView: View {
     @Environment(\.theme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(room: Room) {
-        _viewModel = StateObject(wrappedValue: SwipeViewModel(room: room))
+    init(partnership: Partnership) {
+        _viewModel = StateObject(wrappedValue: SwipeViewModel(partnership: partnership))
     }
 
-    private var roomDisplayName: String {
-        if let name = viewModel.room.name, !name.isEmpty { return name }
-        return "Raum \(viewModel.room.code)"
-    }
-
-    private var partnerPresenceLabel: String {
-        switch viewModel.room.status {
-        case "active": return "zu zweit"
-        case "waiting": return "wartet auf Partner"
-        default: return ""
-        }
+    private var partnerName: String {
+        viewModel.partnership.partner?.name ?? "Partner"
     }
 
     var body: some View {
@@ -64,22 +53,20 @@ struct SwipeView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 2) {
-                    Text(roomDisplayName)
+                    Text(partnerName)
                         .font(theme.fonts.body(size: 15, weight: .semibold))
                         .foregroundColor(theme.colors.textPrimary)
                         .lineLimit(1)
-                    if !partnerPresenceLabel.isEmpty {
-                        Text(partnerPresenceLabel)
-                            .font(theme.fonts.microCaption)
-                            .tracking(1.0)
-                            .textCase(.uppercase)
-                            .foregroundColor(theme.colors.textTertiary)
-                    }
+                    Text("zu zweit")
+                        .font(theme.fonts.microCaption)
+                        .tracking(1.0)
+                        .textCase(.uppercase)
+                        .foregroundColor(theme.colors.textTertiary)
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink {
-                    MatchesListView(roomId: viewModel.room.id)
+                    MatchesListView(partnershipId: viewModel.partnership.id)
                 } label: {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 15, weight: .semibold))
@@ -88,46 +75,25 @@ struct SwipeView: View {
                 .accessibilityLabel("Matches anzeigen")
             }
         }
-        .sheet(item: $viewModel.currentMatch, onDismiss: {
-            viewModel.maybeShowUpgradePromptAfterMatch()
-        }) { match in
-            MatchView(match: match, roomId: viewModel.room.id) {
+        .sheet(item: $viewModel.currentMatch) { match in
+            MatchView(match: match, partnershipId: viewModel.partnership.id) {
                 viewModel.currentMatch = nil
             }
-        }
-        .sheet(isPresented: $viewModel.showUpgradePrompt, onDismiss: {
-            if upgradePendingAfterPromptDismiss {
-                upgradePendingAfterPromptDismiss = false
-                showUpgradeAccount = true
-            }
-        }) {
-            GuestUpgradePromptSheet(
-                onUpgrade: {
-                    upgradePendingAfterPromptDismiss = true
-                    viewModel.dismissUpgradePrompt()
-                },
-                onDismiss: {
-                    viewModel.dismissUpgradePrompt()
-                }
-            )
-        }
-        .sheet(isPresented: $showUpgradeAccount) {
-            UpgradeAccountView()
         }
         .alert("Fehler", isPresented: $viewModel.showError) {
             Button("OK") {}
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
-        .alert("Partner hat den Raum verlassen", isPresented: $viewModel.partnerLeft) {
+        .alert("Partner offline", isPresented: $viewModel.partnerLeft) {
             Button("OK") {}
         } message: {
-            Text("Dein Partner ist raus. Du kannst weiter swipen oder zurück zur Übersicht.")
+            Text("\(partnerName) ist gerade nicht da. Du kannst weiter swipen — Matches gibt's nur, wenn ihr beide Ja sagt.")
         }
-        .alert("Raum aufgelöst", isPresented: $viewModel.roomDissolved) {
+        .alert("Partnerschaft beendet", isPresented: $viewModel.partnershipEnded) {
             Button("Zur Übersicht") { dismiss() }
         } message: {
-            Text("Dieser Raum wurde aufgelöst.")
+            Text("Diese Partnerschaft wurde beendet.")
         }
         .task {
             await viewModel.fetchFeed()

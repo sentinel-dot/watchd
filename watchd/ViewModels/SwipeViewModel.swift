@@ -8,42 +8,29 @@ final class SwipeViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var dragOffset: CGSize = .zero
     @Published var currentMatch: SocketMatchEvent?
-    @Published var roomMembers: [RoomMember] = []
     @Published var showError = false
     @Published var errorMessage: String?
     @Published var swipeCount = 0
     @Published var partnerLeft = false
-    @Published var roomDissolved = false
-    @Published var showUpgradePrompt = false
+    @Published var partnershipEnded = false
 
-    static let upgradePromptMatchThreshold = 3
-    static let upgradePromptCooldown: TimeInterval = 3 * 24 * 60 * 60
-
-    static func guestMatchCounterKey(for userId: Int) -> String {
-        "guestMatchesSinceLastPrompt_\(userId)"
-    }
-    static func guestLastPromptKey(for userId: Int) -> String {
-        "guestLastUpgradePromptAt_\(userId)"
-    }
-
-    let room: Room
+    let partnership: Partnership
     private var lastPosition = 0
     private var isFetching = false
     private var hasMorePages = true
     private var cancellables = Set<AnyCancellable>()
 
-    init(room: Room) {
-        self.room = room
-        
+    init(partnership: Partnership) {
+        self.partnership = partnership
+
         SocketService.shared.matchPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 self?.currentMatch = event
-                self?.registerMatchForUpgradePrompt()
             }
             .store(in: &cancellables)
-        
-        SocketService.shared.filtersUpdatedPublisher
+
+        SocketService.shared.partnerFiltersUpdatedPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
@@ -55,7 +42,7 @@ final class SwipeViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-        
+
         SocketService.shared.partnerLeftPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
@@ -63,11 +50,11 @@ final class SwipeViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        SocketService.shared.roomDissolvedPublisher
+        SocketService.shared.partnershipEndedPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] roomId in
-                guard let self = self, self.room.id == roomId else { return }
-                self.roomDissolved = true
+            .sink { [weak self] partnershipId in
+                guard let self = self, self.partnership.id == partnershipId else { return }
+                self.partnershipEnded = true
             }
             .store(in: &cancellables)
     }
@@ -76,13 +63,13 @@ final class SwipeViewModel: ObservableObject {
 
     func startSocket() {
         guard let token = KeychainHelper.load(forKey: KeychainHelper.tokenKey) else { return }
-        SocketService.shared.connect(token: token, roomId: room.id)
+        SocketService.shared.connect(token: token, partnershipId: partnership.id)
     }
 
     func reconnectSocketIfNeeded() {
         guard let token = KeychainHelper.load(forKey: KeychainHelper.tokenKey) else { return }
         if !SocketService.shared.isConnected {
-            SocketService.shared.connect(token: token, roomId: room.id)
+            SocketService.shared.connect(token: token, partnershipId: partnership.id)
         }
     }
 
@@ -95,7 +82,10 @@ final class SwipeViewModel: ObservableObject {
         defer { isFetching = false; isLoading = false }
 
         do {
-            let response = try await APIService.shared.getMovieFeed(roomId: room.id, afterPosition: lastPosition)
+            let response = try await APIService.shared.fetchFeedForPartnership(
+                partnershipId: partnership.id,
+                afterPosition: lastPosition
+            )
             movies.append(contentsOf: response.movies)
             if response.movies.isEmpty {
                 hasMorePages = false
@@ -105,15 +95,6 @@ final class SwipeViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
             showError = true
-        }
-    }
-
-    func fetchRoomMembers() async {
-        do {
-            let detail = try await APIService.shared.getRoom(id: room.id)
-            roomMembers = detail.members
-        } catch {
-            // Non-critical — swallowed silently
         }
     }
 
@@ -155,9 +136,12 @@ final class SwipeViewModel: ObservableObject {
         let swipeStarted = Date()
 
         do {
-            _ = try await APIService.shared.submitSwipe(movieId: swipedId, roomId: room.id, direction: direction)
+            _ = try await APIService.shared.swipeForPartnership(
+                movieId: swipedId,
+                partnershipId: partnership.id,
+                direction: direction
+            )
 
-            // Ensure fly animation has finished before removing the card
             let remaining = animationDuration - Date().timeIntervalSince(swipeStarted)
             if remaining > 0 {
                 try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
@@ -171,7 +155,6 @@ final class SwipeViewModel: ObservableObject {
                 Task { await fetchNextPage() }
             }
         } catch {
-            // API failed — animate card back so the user can retry
             withAnimation(.interactiveSpring()) {
                 dragOffset = .zero
             }
@@ -179,40 +162,8 @@ final class SwipeViewModel: ObservableObject {
             showError = true
         }
     }
-    
+
     private func fetchNextPage() async {
         await fetchFeed()
-    }
-
-    // MARK: - Guest Upgrade Prompt
-
-    private func registerMatchForUpgradePrompt() {
-        guard let user = AuthViewModel.shared.currentUser, user.isGuest else { return }
-        let defaults = UserDefaults.standard
-        let key = Self.guestMatchCounterKey(for: user.id)
-        let newCount = defaults.integer(forKey: key) + 1
-        defaults.set(newCount, forKey: key)
-    }
-
-    func maybeShowUpgradePromptAfterMatch() {
-        guard let user = AuthViewModel.shared.currentUser, user.isGuest else { return }
-        let defaults = UserDefaults.standard
-        let count = defaults.integer(forKey: Self.guestMatchCounterKey(for: user.id))
-        guard count >= Self.upgradePromptMatchThreshold else { return }
-
-        if let last = defaults.object(forKey: Self.guestLastPromptKey(for: user.id)) as? Date,
-           Date().timeIntervalSince(last) < Self.upgradePromptCooldown {
-            return
-        }
-
-        showUpgradePrompt = true
-    }
-
-    func dismissUpgradePrompt() {
-        showUpgradePrompt = false
-        guard let user = AuthViewModel.shared.currentUser, user.isGuest else { return }
-        let defaults = UserDefaults.standard
-        defaults.set(0, forKey: Self.guestMatchCounterKey(for: user.id))
-        defaults.set(Date(), forKey: Self.guestLastPromptKey(for: user.id))
     }
 }

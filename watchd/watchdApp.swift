@@ -41,22 +41,11 @@ struct watchdApp: App {
         UINavigationBar.appearance().backgroundColor = base
     }
 
-    // Handles watchd:// custom URL scheme (join links, legacy reset-password links)
+    // Handles watchd:// custom URL scheme (reset-password; add-partner kommt in Phase 8)
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == "watchd" else { return }
 
-        if url.host == "join" || url.pathComponents.contains("join") {
-            let code = url.pathComponents.last?.uppercased() ?? ""
-            if !code.isEmpty && code.count == 6 {
-                if authViewModel.isAuthenticated {
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("joinRoomFromDeepLink"),
-                        object: nil,
-                        userInfo: ["code": code]
-                    )
-                }
-            }
-        } else if url.host == "reset-password", let token = url.queryParameters?["token"] {
+        if url.host == "reset-password", let token = url.queryParameters?["token"] {
             postResetPasswordNotification(token: token)
         }
     }

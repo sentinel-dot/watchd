@@ -8,14 +8,14 @@ final class MatchesViewModel: ObservableObject {
     @Published var showError = false
     @Published var hasLoadedOnce = false
 
-    let roomId: Int
+    let partnershipId: Int
     private var currentOffset = 0
     private var hasMore = true
     private var isFetchingMore = false
     private let pageSize = 20
 
-    init(roomId: Int) {
-        self.roomId = roomId
+    init(partnershipId: Int) {
+        self.partnershipId = partnershipId
     }
 
     func fetchMatches() async {
@@ -27,7 +27,11 @@ final class MatchesViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let response = try await APIService.shared.getMatches(roomId: roomId, limit: pageSize, offset: 0)
+            let response = try await APIService.shared.fetchMatchesForPartnership(
+                partnershipId: partnershipId,
+                limit: pageSize,
+                offset: 0
+            )
             matches = response.matches
             hasMore = response.pagination?.hasMore ?? false
             currentOffset = response.matches.count
@@ -50,7 +54,6 @@ final class MatchesViewModel: ObservableObject {
 
     func loadMoreIfNeeded(currentMatch: Match) async {
         guard hasMore, !isFetchingMore else { return }
-        // Trigger when within last 5 items
         let thresholdIndex = matches.index(matches.endIndex, offsetBy: -5, limitedBy: matches.startIndex) ?? matches.startIndex
         guard let currentIndex = matches.firstIndex(where: { $0.id == currentMatch.id }),
               currentIndex >= thresholdIndex else { return }
@@ -59,7 +62,11 @@ final class MatchesViewModel: ObservableObject {
         defer { isFetchingMore = false }
 
         do {
-            let response = try await APIService.shared.getMatches(roomId: roomId, limit: pageSize, offset: currentOffset)
+            let response = try await APIService.shared.fetchMatchesForPartnership(
+                partnershipId: partnershipId,
+                limit: pageSize,
+                offset: currentOffset
+            )
             matches.append(contentsOf: response.matches)
             hasMore = response.pagination?.hasMore ?? false
             currentOffset += response.matches.count

@@ -1,35 +1,46 @@
 import SwiftUI
+import UIKit
 
-// Profile-Tab: Konto, Archiv, Rechtliches, Session.
+// Profile-Tab: Konto, Dein Code, Rechtliches, Session.
 // List-basiert (iOS-typisches Profil-Pattern).
 
 struct ProfileView: View {
     @Environment(\.theme) private var theme
     @EnvironmentObject private var authVM: AuthViewModel
 
-    @State private var showUpgradeSheet = false
     @State private var showRenameSheet = false
     @State private var draftName = ""
-    @State private var showGuestLogoutAlert = false
     @State private var showDeleteAccountAlert = false
 
+    @State private var shareCode: String?
+    @State private var isLoadingCode = false
+    @State private var codeError: String?
+    @State private var showRegenerateConfirm = false
+    @State private var copyToastVisible = false
+
     var body: some View {
-        List {
-            accountSection
-            archiveSection
-            legalSection
-            sessionSection
+        ZStack(alignment: .top) {
+            List {
+                accountSection
+                shareCodeSection
+                legalSection
+                sessionSection
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(theme.colors.base)
+
+            if copyToastVisible {
+                CopyToast(label: "Code kopiert")
+                    .padding(.top, 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(2)
+            }
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .background(theme.colors.base)
         .navigationTitle("Profil")
         .navigationBarTitleDisplayMode(.large)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbarBackground(theme.colors.base, for: .navigationBar)
-        .sheet(isPresented: $showUpgradeSheet) {
-            UpgradeAccountView()
-        }
         .sheet(isPresented: $showRenameSheet) {
             ProfileNameEditSheet(
                 name: $draftName,
@@ -42,20 +53,24 @@ struct ProfileView: View {
                 }
             )
         }
-        .alert("Als Gast abmelden?", isPresented: $showGuestLogoutAlert) {
-            Button("Konto sichern") { showUpgradeSheet = true }
-            Button("Trotzdem abmelden", role: .destructive) { authVM.logout() }
-            Button("Abbrechen", role: .cancel) {}
-        } message: {
-            Text("Du bist als Gast eingeloggt. Beim Abmelden verlierst du alle Matches, Favoriten und Räume unwiderruflich. Sichere dein Konto in 20 Sekunden mit Email + Passwort.")
-        }
         .alert("Konto endgültig löschen?", isPresented: $showDeleteAccountAlert) {
             Button("Abbrechen", role: .cancel) {}
             Button("Konto löschen", role: .destructive) {
                 Task { await authVM.deleteAccount() }
             }
         } message: {
-            Text("Alle deine Daten, Räume, Matches und Favoriten werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.")
+            Text("Alle deine Daten, Partnerschaften, Matches und Favoriten werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.")
+        }
+        .alert("Code neu generieren?", isPresented: $showRegenerateConfirm) {
+            Button("Abbrechen", role: .cancel) {}
+            Button("Neu generieren", role: .destructive) {
+                Task { await regenerateCode() }
+            }
+        } message: {
+            Text("Dein alter Code wird sofort ungültig. Bestehende Partner bleiben unberührt.")
+        }
+        .task {
+            await loadShareCode()
         }
     }
 
@@ -103,53 +118,73 @@ struct ProfileView: View {
                 }
                 .listRowBackground(theme.colors.surfaceCard)
             }
-
-            if authVM.currentUser?.isGuest == true {
-                Button {
-                    showUpgradeSheet = true
-                } label: {
-                    HStack {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(theme.colors.accent)
-                        Text("Konto sichern")
-                            .font(theme.fonts.bodyMedium)
-                            .foregroundColor(theme.colors.accent)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .regular))
-                            .foregroundColor(theme.colors.textTertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-                .listRowBackground(theme.colors.surfaceCard)
-            }
         } header: {
             Text("Konto")
                 .font(theme.fonts.microCaption)
                 .textCase(.uppercase)
                 .tracking(1.4)
                 .foregroundColor(theme.colors.textTertiary)
-        } footer: {
-            if authVM.currentUser?.isGuest == true {
-                Text("Als Gast ist dein Konto an dieses Gerät gebunden. Füge Email + Passwort hinzu, um deine Matches und Favoriten zu sichern.")
-                    .font(theme.fonts.caption)
-                    .foregroundColor(theme.colors.textTertiary)
-            }
         }
     }
 
-    // MARK: - Archiv
+    // MARK: - Dein Code
 
-    private var archiveSection: some View {
+    private var shareCodeSection: some View {
         Section {
-            NavigationLink {
-                ArchivedRoomsView()
+            HStack(alignment: .center, spacing: 12) {
+                if isLoadingCode {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(theme.colors.accent)
+                        .scaleEffect(0.8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let code = shareCode {
+                    Text(code)
+                        .font(theme.fonts.body(size: 22, weight: .semibold))
+                        .tracking(4)
+                        .foregroundColor(theme.colors.textPrimary)
+                        .lineLimit(1)
+                        .accessibilityLabel("Dein Code: \(code.map(String.init).joined(separator: " "))")
+
+                    Spacer()
+
+                    Button {
+                        copyCode()
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(theme.colors.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Code kopieren")
+                } else if let err = codeError {
+                    Text(err)
+                        .font(theme.fonts.caption)
+                        .foregroundColor(theme.colors.error)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.vertical, 4)
+            .listRowBackground(theme.colors.surfaceCard)
+
+            Button {
+                showRegenerateConfirm = true
             } label: {
-                Label("Archivierte Räume", systemImage: "archivebox")
+                Label("Code erneuern", systemImage: "arrow.triangle.2.circlepath")
                     .foregroundColor(theme.colors.textPrimary)
             }
             .listRowBackground(theme.colors.surfaceCard)
+            .disabled(isLoadingCode || shareCode == nil)
+        } header: {
+            Text("Dein Code")
+                .font(theme.fonts.microCaption)
+                .textCase(.uppercase)
+                .tracking(1.4)
+                .foregroundColor(theme.colors.textTertiary)
+        } footer: {
+            Text("Teile diesen Code mit deinem Partner — er kann dich darüber als Partner adden.")
+                .font(theme.fonts.caption)
+                .foregroundColor(theme.colors.textTertiary)
         }
     }
 
@@ -202,11 +237,7 @@ struct ProfileView: View {
     private var sessionSection: some View {
         Section {
             Button {
-                if authVM.currentUser?.isGuest == true {
-                    showGuestLogoutAlert = true
-                } else {
-                    authVM.logout()
-                }
+                authVM.logout()
             } label: {
                 Label("Abmelden", systemImage: "rectangle.portrait.and.arrow.right")
                     .foregroundColor(theme.colors.textPrimary)
@@ -220,6 +251,72 @@ struct ProfileView: View {
             }
             .listRowBackground(theme.colors.surfaceCard)
         }
+    }
+
+    // MARK: - Share-Code Loading
+
+    private func loadShareCode() async {
+        isLoadingCode = true
+        defer { isLoadingCode = false }
+        do {
+            let response = try await APIService.shared.fetchShareCode()
+            shareCode = response.shareCode
+            codeError = nil
+        } catch {
+            codeError = error.localizedDescription
+        }
+    }
+
+    private func regenerateCode() async {
+        isLoadingCode = true
+        defer { isLoadingCode = false }
+        do {
+            let response = try await APIService.shared.regenerateShareCode()
+            shareCode = response.shareCode
+            codeError = nil
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        } catch {
+            codeError = error.localizedDescription
+        }
+    }
+
+    private func copyCode() {
+        guard let code = shareCode else { return }
+        UIPasteboard.general.string = code
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.easeOut(duration: 0.2)) {
+            copyToastVisible = true
+        }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            await MainActor.run {
+                withAnimation(.easeIn(duration: 0.2)) {
+                    copyToastVisible = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Copy-Toast
+
+private struct CopyToast: View {
+    @Environment(\.theme) private var theme
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 14, weight: .medium))
+            Text(label)
+                .font(theme.fonts.body(size: 14, weight: .medium))
+        }
+        .foregroundColor(theme.colors.textOnAccent)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(theme.colors.accent)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
     }
 }
 
@@ -249,7 +346,7 @@ private struct ProfileNameEditSheet: View {
                         .padding(.top, 24)
                         .focused($focused)
 
-                    Text("So sehen dich andere im Raum.")
+                    Text("So sieht dich dein Partner.")
                         .font(theme.fonts.caption)
                         .foregroundColor(theme.colors.textSecondary)
                         .multilineTextAlignment(.center)

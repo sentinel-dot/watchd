@@ -82,12 +82,6 @@ struct NextMovieResponse: Decodable {
     let stackEmpty: Bool
 }
 
-struct SwipeRequest: Encodable {
-    let movieId: Int
-    let roomId: Int
-    let direction: String
-}
-
 struct SwipeResponse: Decodable {
     let swipe: SwipeInfo
     let match: MatchInfo?
@@ -96,7 +90,7 @@ struct SwipeResponse: Decodable {
 struct SwipeInfo: Decodable {
     let userId: Int
     let movieId: Int
-    let roomId: Int
+    let partnershipId: Int
     let direction: String
 }
 

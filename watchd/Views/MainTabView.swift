@@ -15,10 +15,10 @@ struct MainTabView: View {
     var body: some View {
         TabView {
             NavigationStack {
-                RoomsView()
+                PartnersView()
             }
             .tabItem {
-                Label("Räume", systemImage: "rectangle.stack.fill")
+                Label("Partner", systemImage: "person.2.fill")
             }
 
             NavigationStack {

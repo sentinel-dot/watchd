@@ -2,12 +2,12 @@ import SwiftUI
 
 struct MatchesListView: View {
     @Environment(\.theme) private var theme
-    let roomId: Int
+    let partnershipId: Int
     @StateObject private var viewModel: MatchesViewModel
 
-    init(roomId: Int) {
-        self.roomId = roomId
-        _viewModel = StateObject(wrappedValue: MatchesViewModel(roomId: roomId))
+    init(partnershipId: Int) {
+        self.partnershipId = partnershipId
+        _viewModel = StateObject(wrappedValue: MatchesViewModel(partnershipId: partnershipId))
     }
 
     var body: some View {

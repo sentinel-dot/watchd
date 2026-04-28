@@ -11,11 +11,6 @@ struct RegisterRequest: Encodable {
     let password: String
 }
 
-struct UpgradeAccountRequest: Encodable {
-    let email: String
-    let password: String
-}
-
 struct ForgotPasswordRequest: Encodable {
     let email: String
 }
@@ -39,18 +34,11 @@ struct User: Decodable, Identifiable {
     let id: Int
     let name: String
     let email: String?
-    let isGuest: Bool
-    
-    enum CodingKeys: String, CodingKey {
-        case id, name, email
-        case isGuest = "isGuest"
-    }
 
-    init(id: Int, name: String, email: String?, isGuest: Bool) {
+    init(id: Int, name: String, email: String?) {
         self.id = id
         self.name = name
         self.email = email
-        self.isGuest = isGuest
     }
 }
 

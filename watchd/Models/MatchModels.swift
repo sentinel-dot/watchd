@@ -2,7 +2,7 @@ import Foundation
 
 struct Match: Decodable, Identifiable, Equatable {
     let id: Int
-    let roomId: Int
+    let partnershipId: Int
     let matchedAt: String
     let watched: Bool?
     let movie: MatchMovie

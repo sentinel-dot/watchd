@@ -1,6 +1,6 @@
 # Watchd — iOS App
 
-Tinder-style Movie-Matching-App, iOS-Client. Zwei User swipen in einem gemeinsamen "Room" auf Filme und erhalten eine Match-Benachrichtigung wenn beide denselben Film liken.
+Tinder-style Movie-Matching-App, iOS-Client. Zwei User adden sich gegenseitig als Partner via Share-Code und swipen gemeinsam auf Filme — bei Übereinstimmung gibt's einen Match (inkl. Streaming-Verfügbarkeit).
 
 > **Backend-Doku**: Diese Datei deckt ausschließlich die iOS-App ab. Backend-Routen, API-Verträge, Socket.io-Events, JWT-Strategie, Env-Vars und Match-Flow-Logik sind im Backend-Repo (`watchd_backend-mac/CLAUDE.md`) dokumentiert.
 
@@ -15,7 +15,7 @@ Tinder-style Movie-Matching-App, iOS-Client. Zwei User swipen in einem gemeinsam
 - **Framework**: SwiftUI (iOS 16+, Xcode 16+)
 - **Architektur**: MVVM — alle ViewModels `@MainActor ObservableObject`
 - **Netzwerk**: `URLSession` actor (`APIService`), Socket.io (vendored, v16.1.1)
-- **Storage**: Keychain (`com.watchd.app`) — Keys: `jwt_token`, `jwt_refresh_token`, `user_id`, `user_name`, `user_email`, `is_guest`; UserDefaults-Key `selectedThemeId` für die Theme-Wahl
+- **Storage**: Keychain (`com.watchd.app`) — Keys: `jwt_token`, `jwt_refresh_token`, `user_id`, `user_name`, `user_email`. (`is_guest` wurde in Phase 6 entfernt; `clearAll` löscht den Legacy-Eintrag aus älteren Installationen mit weg.) Kein UserDefaults für Theme-Wahl mehr — Velvet Hour ist statisch
 - **Theme**: Einziges Theme — **Velvet Hour** (cool dark — Base #14101E, Champagne-Accent #D3A26B, Bluu Next Display + Manrope Body). Struct-basiert (`Config/Theme.swift`) mit `@Environment(\.theme)`-Pattern, projektweit statisch injiziert (`watchdApp`: `.environment(\.theme, .velvetHour)` + `.preferredColorScheme(.dark)`). Kein ThemeManager, kein Switcher. OKLCH-designed, sRGB-shipped. Design-Kontext: `.impeccable.md`
 - **Socket.io**: `socket.io-client-swift` v16.1.1 + `Starscream` v4.0.8 sind unter `watchd/Vendor/` vendored — kein SPM-Schritt nötig. Xcode 16 `PBXFileSystemSynchronizedRootGroup` nimmt neue `.swift`-Dateien automatisch auf
 
@@ -29,8 +29,9 @@ watchd/docs/
 └── signing-provisioning.md    # Team ID, Bundle ID, Automatic Signing, Provisioning-Refresh
 
 watchd/watchd/
-├── watchdApp.swift       # @main; deep link handling; environment objects: AuthViewModel, NetworkMonitor
-├── ContentView.swift     # Root: AuthView (nicht auth) / HomeView (auth); ResetPassword-Sheet
+├── watchdApp.swift       # @main; deep-link `watchd://reset-password` handler;
+│                         # environment objects: AuthViewModel, NetworkMonitor
+├── ContentView.swift     # Root: AuthView (nicht auth) / MainTabView (auth); ResetPassword-Sheet
 ├── AppDelegate.swift     # APNs-Token → hex → POST /users/me/device-token; foreground notifications
 ├── Config/
 │   ├── APIConfig.swift          # Base URLs (Debug: localhost:3000, Release: Railway); #if DEBUG
@@ -45,10 +46,19 @@ watchd/watchd/
 │                                # nur BluuNext + Manrope (6 Dateien); loggt fehlende
 │                                # Font-Dateien, kein Crash — Fallback auf Systemfonts
 ├── Models/               # Codable structs (snake_case → camelCase via keyDecodingStrategy)
-│   ├── AuthModels.swift  # Auth requests/responses, User struct
-│   ├── MovieModels.swift # Movie, StreamingOption, SwipeRequest/Response, MatchInfo
-│   ├── RoomModels.swift  # Room, RoomFilters, RoomMember, join/leave/detail responses
-│   └── MatchModels.swift # Match, MatchMovie, Favorite, SocketMatchEvent, FavoritesResponse
+│   ├── AuthModels.swift          # Auth requests/responses, User struct (ohne isGuest)
+│   ├── MovieModels.swift         # Movie, StreamingOption, SwipeResponse/SwipeInfo, MatchInfo
+│   │                             # (SwipeRequest entfernt — APIService nutzt inline struct)
+│   ├── PartnershipModels.swift   # Partnership, PartnerUser, PartnershipFilters,
+│   │                             # PartnershipsListResponse, PartnershipDetailResponse,
+│   │                             # PartnershipFiltersResponse, PartnershipDeletedResponse,
+│   │                             # AddPartnerRequest, ShareCodeResponse,
+│   │                             # PartnershipRequest/Accepted/EndedSocketEvent.
+│   │                             # Felder partner / createdAt / requesterId / addresseeId
+│   │                             # bewusst Optional, weil request- und accept-Routes
+│   │                             # ohne Timestamps liefern (Backend-Realität)
+│   └── MatchModels.swift         # Match (partnershipId statt roomId), MatchMovie, Favorite,
+│                                 # SocketMatchEvent, FavoritesResponse
 ├── Services/
 │   ├── APIService.swift      # actor — thread-safe async/await URLSession; Auto-refresh bei 401
 │   │                         # isRefreshing-Flag verhindert parallele Refreshes; Timeout: 30s
@@ -57,89 +67,109 @@ watchd/watchd/
 │   │                         # urlCache = nil + requestCachePolicy =
 │   │                         # .reloadIgnoringLocalCacheData — sonst hält URLCache
 │   │                         # GET /api/rooms heuristisch stale (Room-Status ändert
-│   │                         # sich Socket-seitig ohne Cache-Control-Header)
+│   │                         # sich Socket-seitig ohne Cache-Control-Header).
+│   │                         # Partnership-Methoden: fetchPartnerships,
+│   │                         # fetchPartnership, requestPartnership, acceptPartnership,
+│   │                         # declinePartnership, cancelPartnershipRequest,
+│   │                         # deletePartnership, updatePartnershipFilters,
+│   │                         # fetchShareCode, regenerateShareCode,
+│   │                         # fetchFeedForPartnership, fetchNextMovieForPartnership,
+│   │                         # swipeForPartnership, fetchMatchesForPartnership.
+│   │                         # Alte Room-Methoden komplett entfernt (Phase 7).
+│   │                         # guestLogin / upgradeAccount in Phase 6 entfernt
 │   ├── KeychainHelper.swift  # JWT + User-Info Storage via Security framework
 │   ├── NetworkMonitor.swift  # @MainActor ObservableObject; NWPathMonitor → @Published isConnected
-│   └── SocketService.swift   # @MainActor Singleton; Publishers: matchPublisher,
-│                             # filtersUpdatedPublisher, partnerLeftPublisher,
-│                             # partnerJoinedPublisher, roomDissolvedPublisher
+│   └── SocketService.swift   # @MainActor Singleton.
+│                             # Connect-API: connect(token:partnershipId:) (partnershipId
+│                             # optional; ohne Wert nur user:<userId>-Channel für
+│                             # Request/Accepted-Pushes).
+│                             # Publishers: matchPublisher, partnerFiltersUpdatedPublisher
+│                             # (PartnershipFilters), partnerLeftPublisher,
+│                             # partnerJoinedPublisher, partnershipRequestPublisher,
+│                             # partnershipAcceptedPublisher, partnershipEndedPublisher.
 │                             # Lazy connect — nur beim Betreten der SwipeView
 ├── ViewModels/
-│   ├── AuthViewModel.swift    # Singleton (AuthViewModel.shared); loadSession() aus Keychain;
-│   │                          # login, register, guestLogin, upgradeAccount, updateName,
-│   │                          # logout, deleteAccount; requestPushPermissionIfNeeded();
-│   │                          # setupUnauthorizedListener() reagiert auf 401s
-│   ├── HomeViewModel.swift    # loadRooms(), loadArchivedRooms(), createRoom, joinRoom,
-│   │                          # selectRoom, updateRoomName, leaveRoom; min 450ms Ladeanimation
-│   ├── SwipeViewModel.swift   # fetchFeed(roomId, page) — paginiert (20/page), lazy load bei ≤5
-│   │                          # handleDrag + commitSwipe — 100pt Threshold, 0.25s fly-out
-│   │                          # Subscriptions: match, filtersUpdated, partnerLeft, roomDissolved
-│   │                          # reconnectSocketIfNeeded() beim App-Foreground
-│   │                          # Guest-Upgrade-Prompt: zählt Matches in UserDefaults
-│   │                          # pro userId (guestMatchesSinceLastPrompt_<userId>),
-│   │                          # triggert showUpgradePrompt wenn Gast + Counter ≥3
-│   │                          # + letzter Prompt ≥3 Tage her. Per-User-Namespacing
-│   │                          # verhindert dass der Zustand eines vorherigen Gast-
-│   │                          # Accounts den nächsten auf dem gleichen Gerät blockiert
-│   ├── MatchesViewModel.swift # fetchMatches() paginiert; mehr laden bei letzten 5; min 450ms
-│   └── FavoritesViewModel.swift # loadFavorites(), toggleFavorite(), removeFavorite(), isFavorite()
-│                                 # paginiert; mehr laden bei letzten 5; min 450ms
+│   ├── AuthViewModel.swift       # Singleton (AuthViewModel.shared); loadSession() aus Keychain;
+│   │                             # login, register, updateName, logout, deleteAccount;
+│   │                             # requestPushPermissionIfNeeded();
+│   │                             # setupUnauthorizedListener() reagiert auf 401s.
+│   │                             # Phase 6: guestLogin / upgradeAccount entfernt (Gast-Zugang weg)
+│   ├── PartnersViewModel.swift   # loadPartnerships() liefert {incoming, outgoing, active};
+│   │                             # acceptRequest / declineRequest / cancelRequest /
+│   │                             # deletePartnership / updateFilters mit optimistic update;
+│   │                             # subscribt partnershipRequest / partnershipAccepted /
+│   │                             # partnershipEnded; min 450ms Ladeanimation (animated:false
+│   │                             # für Socket-Refreshes). Ersetzt HomeViewModel
+│   ├── AddPartnerViewModel.swift # Code-Eingabe-Sheet: codeInput normalisiert (uppercase,
+│   │                             # Crockford-Base32 strip, max 8 Zeichen) via
+│   │                             # AddPartnerViewModel.normalize(...); submit(onSuccess:) ruft
+│   │                             # requestPartnership und liefert die neue Partnership zurück
+│   ├── SwipeViewModel.swift      # init(partnership:), fetchFeed(afterPosition) — paginiert
+│   │                             # (20/page), lazy load bei ≤5; handleDrag + commitSwipe —
+│   │                             # 100pt Threshold, 0.25s fly-out;
+│   │                             # Subscriptions: match, partnerFiltersUpdated, partnerLeft,
+│   │                             # partnershipEnded; reconnectSocketIfNeeded() beim
+│   │                             # App-Foreground. Phase 6: Guest-Upgrade-Prompt komplett raus
+│   ├── MatchesViewModel.swift    # init(partnershipId:); fetchMatches() paginiert; mehr
+│   │                             # laden bei letzten 5; min 450ms
+│   └── FavoritesViewModel.swift  # loadFavorites(), toggleFavorite(), removeFavorite(),
+│                                  # isFavorite(); paginiert; mehr laden bei letzten 5; min 450ms
 ├── Fonts/                 # OFL-Font-Dateien für Velvet Hour: BluuNext-Bold/-BoldItalic +
 │                          # Manrope-Regular/Medium/SemiBold/Bold (6 Dateien, alle im Bundle).
 │                          # README.md listet Quellen + erwartete Dateinamen (= PostScript-
 │                          # Name). Fehlen Files → Fallback auf Systemfonts, kein Crash
 └── Views/
-    ├── AuthView.swift             # Login / Register / Guest / Forgot-Password Entry-Screen
-    ├── MainTabView.swift          # Auth-Root: 3-Tab-Container (Räume / Favoriten / Profil),
-    │                              # pro Tab eigene NavigationStack; UITabBarAppearance wird
-    │                              # beim Init + bei Theme-Wechsel getintet. TabBar wird in
-    │                              # SwipeView via .toolbar(.hidden, for: .tabBar) versteckt
-    ├── RoomsView.swift            # Räume-Tab (ex-HomeView). Editorial-Header („Guten Abend,"
-    │                              # + Name in displayHero, dezentes Gast-Caps-Badge).
-    │                              # Asymmetrische Room-Rows: Nº-Numeral (display-serif),
-    │                              # Raumname (titleMedium), Status-Dot + caps-Meta,
-    │                              # Code in tracked-Caps. Menü via contextMenu + swipeActions
-    │                              # (kein Gear-Strip mehr). Bottom-CTAs: Coral-primary
-    │                              # „Neuen Raum eröffnen" + textlicher „Code eingeben"-Link
-    ├── ProfileView.swift          # Profil-Tab (List-basiert): Konto (Name, Email, Guest-
-    │                              # Upgrade), Archiv, Rechtliches, Abmelden/Konto-löschen.
-    │                              # Kein Design-/Theme-Switcher mehr (Velvet Hour ist fix)
-    ├── SwipeView.swift            # Karten-Stack (3 gestaffelt, Back-Cards scale 0.92 / y24
-    │                              # / opacity-fade) mit Drag-Gesture, Match-Modal-Trigger.
-    │                              # Papier-Lineatur im Hintergrund (Canvas, 44pt-Raster,
-    │                              # cream @ 0.04). Toolbar: Raumname + partner-presence
-    │                              # („zu zweit" / „wartet auf Partner") statt WATCHD-Logo.
-    │                              # Drei differenzierte Action-Buttons (Skip/Merken/Gefällt)
-    │                              # mit caps-Labels darunter
-    ├── MatchView.swift            # Hero-Moment (ersetzt Konfetti): radialer Accent-Bloom
-    │                              # (RadialGradient, scale 0.3→1.25 + opacity-fade, 600ms
-    │                              # easeOutExpo) + .success UINotificationFeedbackGenerator
-    │                              # + 6-Stufen-Staggered-Reveal (Headline→Subtitle→Poster→
-    │                              # Title→Providers→CTAs, je 150ms). Headline „Match." in
-    │                              # display-serif italic Accent. Provider als horizontaler
-    │                              # ProviderChip-Strip (nicht mehr 3×-Grid). Reduce-Motion:
-    │                              # alle Delays auf 0, kein Bloom, nur Opacity-Reveal
-    ├── MatchesListView.swift      # Paginiert, watched togglen, Detail-Navigation
+    ├── AuthView.swift             # Login / Register / Forgot-Password Entry-Screen
+    │                              # (Guest-Button entfernt; Apple-Placeholder TODO Phase 9)
+    ├── MainTabView.swift          # Auth-Root: 3-Tab-Container (Partner / Favoriten / Profil),
+    │                              # pro Tab eigene NavigationStack; UITabBarAppearance getintet.
+    │                              # TabBar wird in SwipeView via .toolbar(.hidden, for: .tabBar)
+    │                              # versteckt
+    ├── PartnersView.swift         # Partners-Tab (ersetzt RoomsView). Section-List:
+    │                              # • Eingehende Anfragen (cond, max 3 + Overflow-Link)
+    │                              # • Partner (immer, max 3 + Overflow-Link, Empty-State)
+    │                              # • Ausstehend (cond, gedimmt, max 3 + Overflow-Link)
+    │                              # Bottom-CTA „Partner hinzufügen" → AddPartnerSheet.
+    │                              # PartnerCard: contextMenu + swipeActions (Filter ändern /
+    │                              # Partner entfernen) + Confirm-Alert
+    ├── AddPartnerSheet.swift      # Code-Eingabe-Sheet: NativeTextField mit AddPartnerVM-
+    │                              # Normalisierung (uppercase + Crockford-Filter + 8-char-Trim),
+    │                              # primary „Anfrage senden" — disabled bis Code 8 Zeichen
+    ├── PartnerFiltersView.swift   # Filter-Editor (Genres, Jahre, Streaming, Rating, Laufzeit).
+    │                              # Toolbar-Title = Partner-Name. Enthält
+    │                              # PartnershipFilterOptionsView, GenreOption, StreamingService.
+    │                              # API: PATCH /partnerships/:id/filters → Stack-Regen
+    ├── PendingRequestsView.swift  # Overflow: alle eingehenden Anfragen (Accept/Decline pro Row)
+    ├── OutgoingRequestsView.swift # Overflow: alle ausgehenden Anfragen (Cancel pro Row)
+    ├── AllPartnersView.swift      # Overflow: alle aktiven Partner (Tap → SwipeView,
+    │                              # contextMenu + swipeActions analog PartnersView)
+    ├── ProfileView.swift          # Profil-Tab (List-basiert): Konto (Name, Email),
+    │                              # Dein Code (Mono-Display, Copy-Button, Code-erneuern mit
+    │                              # Confirm-Alert), Rechtliches, Abmelden, Konto löschen.
+    │                              # Kein Archiv mehr, kein Guest-Upgrade mehr
+    ├── SwipeView.swift            # init(partnership:). Karten-Stack mit Drag-Gesture,
+    │                              # Match-Modal-Trigger. Toolbar: Partner-Name + „zu zweit"-
+    │                              # caps-Label. Drei Action-Buttons (Skip/Merken/Gefällt).
+    │                              # Alerts: partnerLeft („Partner offline"), partnershipEnded
+    │                              # („Partnerschaft beendet" → dismiss). Kein Guest-Upgrade
+    │                              # mehr
+    ├── MatchView.swift            # Hero-Moment: radialer Accent-Bloom + 6-Stufen-Staggered-
+    │                              # Reveal + .success-Haptik. CTAs: „Weiter schauen" + „Alle
+    │                              # Matches" (NavigationLink zu MatchesListView mit
+    │                              # partnershipId)
+    ├── MatchesListView.swift      # init(partnershipId:). Paginiert, watched togglen,
+    │                              # Detail-Navigation
     ├── FavoritesListView.swift    # Paginiert, toggleFavorite, Detail-Navigation
-    ├── MovieDetailView.swift      # Film-Details editorial: displayHero-Title, Meta-Zeile
-    │                              # (Rating·Jahr·Match/Favorit-caps-Badges), Pull-Quote-
-    │                              # Overview (2pt Accent-Rule links, italic bodyRegular),
-    │                              # Streaming als typografische StreamingListRow-Liste
-    │                              # (Icon 32pt + Name + Monetization-caps-Label)
-    ├── MovieCardView.swift        # Swipe-Karte: Display-Serif-Title (30pt), Meta-Zeile
-    │                              # (Rating · Jahr), Italic-Pull-Quote-Overview (3 Zeilen,
-    │                              # tap-to-expand). Overlay-Badges „Gefällt"/„Nein" als
-    │                              # dünner caps-Text auf Accent-Rahmen, 3° Rotation
-    ├── CreateRoomSheet.swift      # Neuer Room: Name + Filter (Genres, Jahre, Streaming)
-    ├── RoomFiltersView.swift      # Filter-Editor für bestehenden Room → Stack neu generieren
-    ├── ArchivedRoomsView.swift    # Liste + Hard-Delete archivierter Rooms
-    ├── UpgradeAccountView.swift   # Guest → Vollkonto (Email + Password hinzufügen)
-    ├── GuestUpgradePromptSheet.swift # Sheet nach N Matches als Gast — "Jetzt sichern" /
-    │                                  # "Später"; ruft UpgradeAccountView bei Confirm
+    ├── MovieDetailView.swift      # Film-Details editorial: displayHero-Title, Meta-Zeile,
+    │                              # Pull-Quote-Overview, Streaming als StreamingListRow
+    ├── MovieCardView.swift        # Swipe-Karte: Display-Serif-Title, Meta-Zeile,
+    │                              # Italic-Pull-Quote-Overview (3 Zeilen, tap-to-expand),
+    │                              # Overlay-Badges „Gefällt"/„Nein"
     ├── PasswordResetViews.swift   # Forgot-Password-Request + Reset via Deep-Link-Token
     ├── LegalView.swift            # Datenschutz / Impressum / AGB
     ├── NativeTextField.swift      # UIViewRepresentable Wrapper für bessere Keyboard-Handles
-    └── SharedComponents.swift     # Wiederverwendbare UI-Bausteine (Buttons, Loader, Empty-States)
+    └── SharedComponents.swift     # Wiederverwendbare UI-Bausteine (Buttons, Loader,
+                                   # Empty-States, OfflineBanner, PrimaryButton)
 ```
 
 ---
@@ -151,38 +181,34 @@ App Launch → ContentView
 ├── NICHT AUTH → AuthView
 │   ├── Login (email + password)
 │   ├── Register-Sheet
-│   ├── Passwort vergessen → Reset-Mail → deep link → ResetPasswordView
-│   └── Guest Login (anonymer dt. Name)
+│   └── Passwort vergessen → Reset-Mail → deep link → ResetPasswordView
 └── AUTH → MainTabView (3 Tabs, jeder mit eigener NavigationStack)
-    ├── Tab "Räume" → RoomsView
-    │   ├── Room-Karte → SwipeView (TabBar hidden)
+    ├── Tab "Partner" → PartnersView (Section-List)
+    │   ├── Eingehende Anfragen → Accept (→ active) / Decline / Overflow → PendingRequestsView
+    │   ├── Partner-Karte (active) → SwipeView(partnership:) (TabBar hidden)
     │   │   ├── Karten-Stack (3 Karten, gestaffelt): Drag ±100pt
     │   │   ├── Right-Swipe → Matchmaking → Socket.io match → MatchView Sheet
     │   │   │   └── MatchView: Radial-Bloom + Staggered-Reveal + Streaming-Optionen
-    │   │   │       ├── "Weiter swipen" → zurück zur SwipeView
-    │   │   │       │   └── (Gast, ≥3 Matches, Cooldown abgelaufen)
-    │   │   │       │       → GuestUpgradePromptSheet
-    │   │   │       │         ├── "Jetzt sichern" → UpgradeAccountView
-    │   │   │       │         └── "Später" → zurück zur SwipeView
+    │   │   │       ├── "Weiter schauen" → zurück zur SwipeView
     │   │   │       └── "Alle Matches" → MatchesListView
     │   │   ├── Herz-Button (Karte) → Favorit togglen
     │   │   ├── Toolbar-Herz → MatchesListView → MovieDetailView
-    │   │   └── Socket Events: partner_joined/left, room_dissolved, filters_updated
-    │   ├── Room erstellen → CreateRoomSheet (Name + Filter) → SwipeView
-    │   ├── Room beitreten → JoinRoomSheet (6-char Code) → SwipeView
-    │   └── Filter bearbeiten → RoomFiltersView → Stack neu generieren
-    ├── Tab "Favoriten" → FavoritesListView (global, roomId-entkoppelt) → MovieDetailView
+    │   │   └── Socket Events: partner_joined/left, partnership_ended, filters_updated
+    │   ├── ContextMenu/SwipeActions: Filter ändern → PartnerFiltersView,
+    │   │                              Partner entfernen → Confirm-Alert
+    │   ├── Ausstehende Anfragen (gedimmt) → Cancel / Overflow → OutgoingRequestsView
+    │   ├── Bottom-CTA „Partner hinzufügen" → AddPartnerSheet (Code-Eingabe)
+    │   └── Overflow „Alle Partner" → AllPartnersView
+    ├── Tab "Favoriten" → FavoritesListView (global, partnership-entkoppelt) → MovieDetailView
     └── Tab "Profil" → ProfileView
-        ├── Konto: Name editieren, Email anzeigen, Guest → "Konto sichern" → UpgradeAccountView
-        ├── Archiv → ArchivedRoomsView
-        ├── Rechtliches → Datenschutz / Nutzungsbedingungen / Impressum / Datenquellen
-        └── Session:
-            ├── Abmelden → (Gast: 3-Button-Alert "Konto sichern" | "Trotzdem abmelden" | "Abbrechen")
-            └── Konto löschen → Destructive-Alert
+        ├── Konto: Name editieren, Email anzeigen
+        ├── Dein Code: 8-stelliger Code, Copy-Button, Code erneuern (Confirm-Alert)
+        ├── Rechtliches: Datenschutz / Nutzungsbedingungen / Impressum / Datenquellen
+        └── Session: Abmelden | Konto löschen (Destructive-Alert)
 
 Deep Links:
-  watchd://join/ROOMCODE              → auto-join (oder Code für Post-Login queuen)
   watchd://reset-password?token=TOKEN → ResetPasswordView Sheet
+  (watchd://add/CODE kommt in Phase 8)
 ```
 
 ---
@@ -258,7 +284,7 @@ Aktueller Repo-Stand:
 - Neue `.swift`-Dateien in `watchd/watchd/` werden von Xcode 16 automatisch erfasst — **kein Projektfile-Edit nötig, keinen Drag-to-Project-Schritt**
 - Socket.io-Verbindung ist **lazy** — nur beim Betreten einer SwipeView wird connected; beim Verlassen disconnect. Spart Akku + hält Socket-Count niedrig
 - **TabBar-Hide in Immersive-Screens** via `.toolbar(.hidden, for: .tabBar)` — aktuell in `SwipeView`. Sheets überlagern die TabBar automatisch, brauchen den Modifier nicht. Neue Immersive-Views explizit ergänzen
-- Ladeanimationen haben **min 450 ms Dauer** (HomeViewModel, MatchesViewModel, FavoritesViewModel) — verhindert Flackern bei schnellen Requests
+- Ladeanimationen haben **min 450 ms Dauer** (PartnersViewModel, MatchesViewModel, FavoritesViewModel) — verhindert Flackern bei schnellen Requests
 - Min 450 ms und 100 pt Drag-Threshold sind bewusste UX-Werte, nicht zufällig — beim Ändern testen
 - Theme-Zugriff in allen Views: `@Environment(\.theme) var theme`, dann `theme.colors.X` / `theme.fonts.X` / `theme.spacing.X` / `theme.motion.X`. Kein ThemeManager, kein Switcher — Theme ist statisch Velvet Hour
 - Neue Font-Dateien **nicht** in Info.plist eintragen — Target nutzt `GENERATE_INFOPLIST_FILE = YES`. Stattdessen File-Name in `FontRegistry.bundledFonts` aufnehmen (Name = PostScript-Name); `CTFontManagerRegisterFontsForURL` zieht sie beim App-Launch
@@ -287,7 +313,7 @@ Aktueller Repo-Stand:
 
 | Status        | Thema                                                                                                                                                                                                  |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **in Arbeit** | Partnerships-Refactor: Rooms → persistente Partnerschaften, Gast-Zugang weg, Share-Codes mit Double-Opt-In, Apple Sign-In. Plan + Phasen im Parent-Repo `docs/partnerships-refactor-plan.md`. Branch: `refactor/partnerships` |
+| **in Arbeit** | Partnerships-Refactor: Rooms → persistente Partnerschaften, Gast-Zugang weg, Share-Codes mit Double-Opt-In, Apple Sign-In. Plan + Phasen im Parent-Repo `docs/partnerships-refactor-plan.md`. Branch: `refactor/partnerships`. **Phasen 5–7 fertig** (2026-04-26): iOS-UI komplett auf Partnership-Welt umgestellt. Phase 7 (Views): `PartnersView` (Section-List Eingehend/Partner/Ausstehend) ersetzt `RoomsView`; neue `AddPartnerSheet`, `PartnerFiltersView`, Overflow-Views `PendingRequestsView` / `OutgoingRequestsView` / `AllPartnersView`. `SwipeView.init(partnership:)`, `MatchView`/`MatchesListView` auf `partnershipId`, `Match.partnershipId` (statt `roomId`). `AuthView`: Guest-Button raus. `ProfileView`: Archiv + Konto-sichern raus, neue „Dein Code"-Section mit Copy + Regenerate. `MainTabView`: Tab heißt jetzt „Partner". `watchdApp`: `watchd://join/...` Deep-Link entfernt (nur `reset-password` bleibt). **Cleanup**: 6 Legacy-Views gelöscht (RoomsView, RoomFiltersView, CreateRoomSheet, ArchivedRoomsView, GuestUpgradePromptSheet, UpgradeAccountView), `RoomModels.swift` weg, alte Room-Methoden in `APIService` (createRoom/joinRoom/getRoom(s)/updateRoom*/leaveRoom/deleteFromArchive/getMovieFeed/getNextMovie/submitSwipe/getMatches) und `SocketService.connect(token:roomId:)` + `roomDissolvedPublisher` + `filtersUpdatedPublisher<RoomFilters>` raus. Phase 8 (Deep Links + Push-Payloads) und Phase 9 (Apple Sign-In) als nächstes. |
 
 ---
 

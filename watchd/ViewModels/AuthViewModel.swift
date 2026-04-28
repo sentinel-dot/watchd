@@ -5,7 +5,7 @@ import UserNotifications
 @MainActor
 final class AuthViewModel: ObservableObject {
     static let shared = AuthViewModel()
-    
+
     @Published var isAuthenticated = false
     @Published var currentUser: User?
     @Published var isLoading = false
@@ -15,7 +15,7 @@ final class AuthViewModel: ObservableObject {
         setupUnauthorizedListener()
         loadSession()
     }
-    
+
     private func loadSession() {
         guard let token = KeychainHelper.load(forKey: KeychainHelper.tokenKey),
               !token.isEmpty,
@@ -25,13 +25,11 @@ final class AuthViewModel: ObservableObject {
         else { return }
 
         let email = KeychainHelper.load(forKey: KeychainHelper.userEmailKey)
-        let isGuestStr = KeychainHelper.load(forKey: KeychainHelper.isGuestKey) ?? "false"
-        let isGuest = isGuestStr == "true"
-        
-        currentUser = User(id: id, name: name, email: email, isGuest: isGuest)
+        currentUser = User(id: id, name: name, email: email)
         isAuthenticated = true
+        requestPushPermissionIfNeeded()
     }
-    
+
     private func setupUnauthorizedListener() {
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("unauthorizedError"),
@@ -69,34 +67,7 @@ final class AuthViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
-    func guestLogin() async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
 
-        do {
-            let response = try await APIService.shared.guestLogin()
-            persistSession(response)
-            isAuthenticated = true
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-    
-    func upgradeAccount(email: String, password: String) async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-
-        do {
-            let response = try await APIService.shared.upgradeAccount(email: email, password: password)
-            persistSession(response)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-    
     func updateName(_ newName: String) async {
         isLoading = true
         errorMessage = nil
@@ -154,14 +125,13 @@ final class AuthViewModel: ObservableObject {
 
         KeychainHelper.save(String(response.user.id), forKey: KeychainHelper.userIdKey)
         KeychainHelper.save(response.user.name, forKey: KeychainHelper.userNameKey)
-        
+
         if let email = response.user.email {
             KeychainHelper.save(email, forKey: KeychainHelper.userEmailKey)
         } else {
             KeychainHelper.delete(forKey: KeychainHelper.userEmailKey)
         }
-        
-        KeychainHelper.save(response.user.isGuest ? "true" : "false", forKey: KeychainHelper.isGuestKey)
+
         currentUser = response.user
         requestPushPermissionIfNeeded()
     }
@@ -172,7 +142,6 @@ final class AuthViewModel: ObservableObject {
             let settings = await center.notificationSettings()
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
-                // Permission already granted — re-register to get a fresh token
                 await MainActor.run {
                     UIApplication.shared.registerForRemoteNotifications()
                 }

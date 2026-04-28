@@ -43,9 +43,11 @@ struct ForgotPasswordView: View {
                         .padding(.bottom, 44)
 
                         AuthField(
+                            label: "E-Mail-Adresse",
                             icon: "envelope", placeholder: "E-Mail", text: $email,
                             keyboardType: .emailAddress, textContentType: .emailAddress,
                             returnKeyType: .send,
+                            accessibilityHint: "Wir senden den Link an diese Adresse.",
                             onSubmit: { Task { await sendResetLink() } },
                             isFocused: $isEmailFocused
                         )
@@ -171,15 +173,21 @@ struct ResetPasswordView: View {
 
                         VStack(spacing: 4) {
                             AuthField(
+                                label: "Neues Passwort",
                                 icon: "lock", placeholder: "Neues Passwort", text: $newPassword,
                                 isSecure: true, textContentType: .newPassword,
-                                returnKeyType: .next, onSubmit: { isConfirmPasswordFocused = true },
+                                returnKeyType: .next,
+                                accessibilityHint: "Mindestens acht Zeichen.",
+                                passwordRulesDescriptor: "minlength: 8;",
+                                onSubmit: { isConfirmPasswordFocused = true },
                                 isFocused: $isNewPasswordFocused
                             )
                             AuthField(
+                                label: "Passwort bestätigen",
                                 icon: "lock", placeholder: "Bestätigen", text: $confirmPassword,
-                                isSecure: true, textContentType: .newPassword,
+                                isSecure: true,
                                 returnKeyType: .done,
+                                accessibilityHint: "Wiederhole dein neues Passwort.",
                                 onSubmit: { Task { await resetPassword() } },
                                 isFocused: $isConfirmPasswordFocused
                             )

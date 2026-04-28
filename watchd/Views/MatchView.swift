@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MatchView: View {
     let match: SocketMatchEvent
-    let roomId: Int
+    let partnershipId: Int
     let onDismiss: () -> Void
 
     @Environment(\.theme) private var theme
@@ -227,7 +227,7 @@ struct MatchView: View {
             }
             .buttonStyle(.plain)
 
-            NavigationLink(destination: MatchesListView(roomId: roomId)) {
+            NavigationLink(destination: MatchesListView(partnershipId: partnershipId)) {
                 Text("Alle Matches")
                     .font(theme.fonts.bodyMedium)
                     .foregroundColor(theme.colors.textPrimary)

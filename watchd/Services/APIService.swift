@@ -157,16 +157,7 @@ actor APIService {
         let body = LoginRequest(email: email, password: password)
         return try await request(path: "/auth/login", method: "POST", body: body, requiresAuth: false)
     }
-    
-    func guestLogin() async throws -> AuthResponse {
-        return try await request(path: "/auth/guest", method: "POST", requiresAuth: false)
-    }
-    
-    func upgradeAccount(email: String, password: String) async throws -> AuthResponse {
-        let body = UpgradeAccountRequest(email: email, password: password)
-        return try await request(path: "/auth/upgrade", method: "POST", body: body)
-    }
-    
+
     func forgotPassword(email: String) async throws -> MessageResponse {
         let body = ForgotPasswordRequest(email: email)
         return try await request(path: "/auth/forgot-password", method: "POST", body: body, requiresAuth: false)
@@ -190,76 +181,81 @@ actor APIService {
         let _: Empty? = try? await request(path: "/users/me/device-token", method: "POST", body: Body(deviceToken: token))
     }
 
-    // MARK: - Rooms
+    // MARK: - Partnerships
 
-    func createRoom(name: String? = nil, filters: RoomFilters? = nil) async throws -> RoomResponse {
-        struct CreateRoomBody: Encodable {
-            let name: String?
-            let filters: RoomFilters?
-        }
-        let body = CreateRoomBody(name: name, filters: filters)
-        return try await request(path: "/rooms", method: "POST", body: body)
+    func fetchPartnerships() async throws -> PartnershipsListResponse {
+        return try await request(path: "/partnerships")
     }
 
-    func joinRoom(code: String) async throws -> RoomResponse {
-        let body = JoinRoomRequest(code: code)
-        return try await request(path: "/rooms/join", method: "POST", body: body)
+    func fetchPartnership(id: Int) async throws -> PartnershipDetailResponse {
+        return try await request(path: "/partnerships/\(id)")
     }
 
-    func getRoom(id: Int) async throws -> RoomDetailResponse {
-        return try await request(path: "/rooms/\(id)")
-    }
-    
-    func getRooms() async throws -> RoomsListResponse {
-        return try await request(path: "/rooms")
-    }
-    
-    func updateRoomName(roomId: Int, name: String) async throws -> RoomResponse {
-        struct UpdateNameBody: Encodable {
-            let name: String
-        }
-        let body = UpdateNameBody(name: name)
-        return try await request(path: "/rooms/\(roomId)", method: "PATCH", body: body)
-    }
-    
-    func updateRoomFilters(roomId: Int, filters: RoomFilters) async throws -> RoomResponse {
-        struct UpdateFiltersBody: Encodable {
-            let filters: RoomFilters
-        }
-        let body = UpdateFiltersBody(filters: filters)
-        return try await request(path: "/rooms/\(roomId)/filters", method: "PATCH", body: body)
-    }
-    
-    func leaveRoom(roomId: Int) async throws -> LeaveRoomResponse {
-        return try await request(path: "/rooms/\(roomId)/leave", method: "DELETE")
+    func requestPartnership(shareCode: String) async throws -> PartnershipDetailResponse {
+        let body = AddPartnerRequest(shareCode: shareCode)
+        return try await request(path: "/partnerships/request", method: "POST", body: body)
     }
 
-    func deleteFromArchive(roomId: Int) async throws {
-        struct DeleteArchiveResponse: Decodable { let deleted: Bool }
-        let _: DeleteArchiveResponse = try await request(path: "/rooms/\(roomId)/archive", method: "DELETE")
+    func acceptPartnership(id: Int) async throws -> PartnershipDetailResponse {
+        return try await request(path: "/partnerships/\(id)/accept", method: "POST")
+    }
+
+    @discardableResult
+    func declinePartnership(id: Int) async throws -> PartnershipDeletedResponse {
+        return try await request(path: "/partnerships/\(id)/decline", method: "POST")
+    }
+
+    @discardableResult
+    func cancelPartnershipRequest(id: Int) async throws -> PartnershipDeletedResponse {
+        return try await request(path: "/partnerships/\(id)/cancel-request", method: "DELETE")
+    }
+
+    @discardableResult
+    func deletePartnership(id: Int) async throws -> PartnershipDeletedResponse {
+        return try await request(path: "/partnerships/\(id)", method: "DELETE")
+    }
+
+    func updatePartnershipFilters(id: Int, filters: PartnershipFilters) async throws -> PartnershipFiltersResponse {
+        struct Body: Encodable { let filters: PartnershipFilters }
+        return try await request(path: "/partnerships/\(id)/filters", method: "PATCH", body: Body(filters: filters))
+    }
+
+    // MARK: - Share Code
+
+    func fetchShareCode() async throws -> ShareCodeResponse {
+        return try await request(path: "/users/me/share-code")
+    }
+
+    func regenerateShareCode() async throws -> ShareCodeResponse {
+        return try await request(path: "/users/me/share-code/regenerate", method: "POST")
     }
 
     // MARK: - Movies
 
-    func getMovieFeed(roomId: Int, afterPosition: Int = 0) async throws -> MovieFeedResponse {
-        return try await request(path: "/movies/feed?roomId=\(roomId)&afterPosition=\(afterPosition)")
+    func fetchFeedForPartnership(partnershipId: Int, afterPosition: Int = 0) async throws -> MovieFeedResponse {
+        return try await request(path: "/movies/feed?partnershipId=\(partnershipId)&afterPosition=\(afterPosition)")
     }
-    
-    func getNextMovie(roomId: Int) async throws -> NextMovieResponse {
-        return try await request(path: "/movies/rooms/\(roomId)/next-movie")
+
+    func fetchNextMovieForPartnership(partnershipId: Int) async throws -> NextMovieResponse {
+        return try await request(path: "/movies/partnerships/\(partnershipId)/next-movie")
     }
 
     // MARK: - Swipes
 
-    func submitSwipe(movieId: Int, roomId: Int, direction: String) async throws -> SwipeResponse {
-        let body = SwipeRequest(movieId: movieId, roomId: roomId, direction: direction)
+    func swipeForPartnership(movieId: Int, partnershipId: Int, direction: String) async throws -> SwipeResponse {
+        struct Body: Encodable {
+            let movieId: Int
+            let partnershipId: Int
+            let direction: String
+        }
+        let body = Body(movieId: movieId, partnershipId: partnershipId, direction: direction)
         return try await request(path: "/swipes", method: "POST", body: body)
     }
 
     // MARK: - Matches
 
-    func getMatches(roomId: Int, limit: Int = 20, offset: Int = 0) async throws -> MatchesResponse {
-        return try await request(path: "/matches/\(roomId)?limit=\(limit)&offset=\(offset)")
+    func fetchMatchesForPartnership(partnershipId: Int, limit: Int = 20, offset: Int = 0) async throws -> MatchesResponse {
+        return try await request(path: "/matches/\(partnershipId)?limit=\(limit)&offset=\(offset)")
     }
     
     func updateMatchWatched(matchId: Int, watched: Bool) async throws -> UpdateMatchResponse {

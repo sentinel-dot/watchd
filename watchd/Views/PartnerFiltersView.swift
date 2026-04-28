@@ -1,12 +1,114 @@
 import SwiftUI
 
-// MARK: - Shared filter content (used by RoomFiltersView and CreateRoomFiltersView)
+// MARK: - Partner Filters (edit existing partnership)
 
-struct FilterOptionsView: View {
+struct PartnerFiltersView: View {
     @Environment(\.theme) private var theme
-    @Binding var filters: RoomFilters
-    var showResetButton: Bool = true
-    var onReset: (() -> Void)?
+    @Environment(\.dismiss) private var dismiss
+
+    let partnershipId: Int
+    let partnerName: String
+    @State private var filters: PartnershipFilters
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    init(partnershipId: Int, partnerName: String, currentFilters: PartnershipFilters?) {
+        self.partnershipId = partnershipId
+        self.partnerName = partnerName
+        self._filters = State(initialValue: currentFilters ?? PartnershipFilters())
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                theme.colors.base.ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    editorialHeader
+                        .padding(.horizontal, 28)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+
+                    PartnershipFilterOptionsView(filters: $filters)
+
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(theme.fonts.caption)
+                            .foregroundColor(theme.colors.error)
+                            .padding(.horizontal, 28)
+                            .padding(.bottom, 12)
+                    }
+                }
+            }
+            .navigationTitle(partnerName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(theme.colors.base, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(action: { dismiss() }) {
+                        Text("Abbrechen")
+                            .font(theme.fonts.microCaption)
+                            .textCase(.uppercase)
+                            .tracking(1.4)
+                            .foregroundColor(theme.colors.textSecondary)
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(theme.colors.accent)
+                            .scaleEffect(0.9)
+                    } else {
+                        Button(action: { Task { await applyFilters() } }) {
+                            Text("Anwenden")
+                                .font(theme.fonts.microCaption)
+                                .textCase(.uppercase)
+                                .tracking(1.4)
+                                .foregroundColor(theme.colors.accent)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var editorialHeader: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Nº 06 · Filter")
+                .font(theme.fonts.microCaption)
+                .textCase(.uppercase)
+                .tracking(1.8)
+                .foregroundColor(theme.colors.accent)
+
+            Text("Was heute Abend zählt.")
+                .font(theme.fonts.display(size: 28, weight: .regular))
+                .italic()
+                .foregroundColor(theme.colors.textPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func applyFilters() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            _ = try await APIService.shared.updatePartnershipFilters(id: partnershipId, filters: filters)
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - Filter content (used by PartnerFiltersView)
+
+struct PartnershipFilterOptionsView: View {
+    @Environment(\.theme) private var theme
+    @Binding var filters: PartnershipFilters
 
     private let yearOptions = [1900, 2000, 2010, 2015, 2020, 2022, 2024]
     private let ratingOptions: [(label: String, value: Double)] = [
@@ -27,7 +129,7 @@ struct FilterOptionsView: View {
                 ratingSection
                 runtimeSection
 
-                if showResetButton, hasAnyFilter {
+                if hasAnyFilter {
                     resetButton
                 }
             }
@@ -88,9 +190,9 @@ struct FilterOptionsView: View {
 
     private var genreSection: some View {
         filterSection(title: "Genres") {
-            FlowLayout(spacing: 8) {
+            FilterFlowLayout(spacing: 8) {
                 ForEach(GenreOption.allCases) { genre in
-                    FilterChip(
+                    PartnerFilterChip(
                         title: genre.name,
                         isSelected: filters.genres?.contains(genre.id) == true
                     ) {
@@ -103,9 +205,9 @@ struct FilterOptionsView: View {
 
     private var streamingSection: some View {
         filterSection(title: "Streaming-Dienste") {
-            FlowLayout(spacing: 8) {
+            FilterFlowLayout(spacing: 8) {
                 ForEach(StreamingService.allCases) { service in
-                    FilterChip(
+                    PartnerFilterChip(
                         title: service.name,
                         isSelected: filters.streamingServices?.contains(service.id) == true
                     ) {
@@ -118,9 +220,9 @@ struct FilterOptionsView: View {
 
     private var yearSection: some View {
         filterSection(title: "Erscheinungsjahr") {
-            FlowLayout(spacing: 8) {
+            FilterFlowLayout(spacing: 8) {
                 ForEach(yearOptions, id: \.self) { year in
-                    FilterChip(
+                    PartnerFilterChip(
                         title: year == 1900 ? "Alle" : "Ab \(year)",
                         isSelected: (filters.yearFrom ?? 1900) == year
                     ) {
@@ -133,9 +235,9 @@ struct FilterOptionsView: View {
 
     private var ratingSection: some View {
         filterSection(title: "Mindestbewertung") {
-            FlowLayout(spacing: 8) {
+            FilterFlowLayout(spacing: 8) {
                 ForEach(ratingOptions, id: \.value) { option in
-                    FilterChip(
+                    PartnerFilterChip(
                         title: option.label,
                         isSelected: (filters.minRating ?? 0) == option.value
                     ) {
@@ -148,9 +250,9 @@ struct FilterOptionsView: View {
 
     private var runtimeSection: some View {
         filterSection(title: "Max. Laufzeit") {
-            FlowLayout(spacing: 8) {
+            FilterFlowLayout(spacing: 8) {
                 ForEach(runtimeOptions, id: \.value) { option in
-                    FilterChip(
+                    PartnerFilterChip(
                         title: option.label,
                         isSelected: (filters.maxRuntime ?? 300) == option.value
                     ) {
@@ -163,8 +265,7 @@ struct FilterOptionsView: View {
 
     private var resetButton: some View {
         Button {
-            resetFilters()
-            onReset?()
+            filters = PartnershipFilters()
         } label: {
             Text("Alles zurücksetzen")
                 .font(theme.fonts.microCaption)
@@ -204,15 +305,11 @@ struct FilterOptionsView: View {
             filters.streamingServices!.append(id)
         }
     }
-
-    private func resetFilters() {
-        filters = RoomFilters()
-    }
 }
 
-// MARK: - Filter chip (multi-select style)
+// MARK: - Filter chip
 
-private struct FilterChip: View {
+private struct PartnerFilterChip: View {
     @Environment(\.theme) private var theme
     let title: String
     let isSelected: Bool
@@ -237,9 +334,9 @@ private struct FilterChip: View {
     }
 }
 
-// MARK: - Simple flow layout for wrapping chips
+// MARK: - Flow Layout
 
-private struct FlowLayout: Layout {
+private struct FilterFlowLayout: Layout {
     var spacing: CGFloat = 8
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -277,107 +374,7 @@ private struct FlowLayout: Layout {
     }
 }
 
-// MARK: - Room filters (edit existing room)
-
-struct RoomFiltersView: View {
-    @Environment(\.theme) private var theme
-    @Environment(\.dismiss) private var dismiss
-    let roomId: Int
-    @State private var filters: RoomFilters
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-
-    init(roomId: Int, currentFilters: RoomFilters?) {
-        self.roomId = roomId
-        self._filters = State(initialValue: currentFilters ?? RoomFilters())
-    }
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                theme.colors.base.ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    editorialHeader
-                        .padding(.horizontal, 28)
-                        .padding(.top, 12)
-                        .padding(.bottom, 8)
-
-                    FilterOptionsView(filters: $filters, showResetButton: true)
-
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(theme.fonts.caption)
-                            .foregroundColor(theme.colors.error)
-                            .padding(.horizontal, 28)
-                            .padding(.bottom, 12)
-                    }
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(theme.colors.base, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(action: { dismiss() }) {
-                        Text("Abbrechen")
-                            .font(theme.fonts.microCaption)
-                            .textCase(.uppercase)
-                            .tracking(1.4)
-                            .foregroundColor(theme.colors.textSecondary)
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(theme.colors.accent)
-                            .scaleEffect(0.9)
-                    } else {
-                        Button(action: { Task { await applyFilters() } }) {
-                            Text("Anwenden")
-                                .font(theme.fonts.microCaption)
-                                .textCase(.uppercase)
-                                .tracking(1.4)
-                                .foregroundColor(theme.colors.accent)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var editorialHeader: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Nº 06 · Filter")
-                .font(theme.fonts.microCaption)
-                .textCase(.uppercase)
-                .tracking(1.8)
-                .foregroundColor(theme.colors.accent)
-
-            Text("Was heute Abend zählt.")
-                .font(theme.fonts.display(size: 28, weight: .regular))
-                .italic()
-                .foregroundColor(theme.colors.textPrimary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func applyFilters() async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-
-        do {
-            _ = try await APIService.shared.updateRoomFilters(roomId: roomId, filters: filters)
-            dismiss()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-}
-
-// MARK: - Enums (Genre & Streaming)
+// MARK: - Genre & Streaming Enums
 
 enum GenreOption: Int, CaseIterable, Identifiable {
     case action = 28
@@ -439,10 +436,8 @@ enum StreamingService: String, CaseIterable, Identifiable {
     }
 }
 
-// MARK: - Preview
-
 #Preview {
-    RoomFiltersView(roomId: 1, currentFilters: nil)
+    PartnerFiltersView(partnershipId: 1, partnerName: "Lena", currentFilters: nil)
         .environment(\.theme, .velvetHour)
         .preferredColorScheme(.dark)
 }

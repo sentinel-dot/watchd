@@ -33,6 +33,11 @@ struct AuthView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .ignoresSafeArea(.keyboard, edges: .bottom)
+
+            KeyboardWarmupView()
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
         .sheet(isPresented: $showRegister) {
             RegisterView()
@@ -81,14 +86,7 @@ struct AuthView: View {
                 }
             }
 
-            Button(action: { Task { await authVM.guestLogin() } }) {
-                Text("Als Gast fortfahren")
-                    .font(theme.fonts.microCaption)
-                    .textCase(.uppercase)
-                    .tracking(1.4)
-                    .foregroundColor(theme.colors.textTertiary)
-            }
-            .disabled(authVM.isLoading)
+            // TODO Phase 9: SignInWithAppleButton
         }
     }
 }
@@ -116,22 +114,26 @@ private struct LoginForm: View {
 
             VStack(spacing: 4) {
                 AuthField(
+                    label: "E-Mail-Adresse",
                     icon: "envelope",
                     placeholder: "E-Mail",
                     text: $email,
                     keyboardType: .emailAddress,
-                    textContentType: .emailAddress,
+                    textContentType: .username,
                     returnKeyType: .next,
+                    accessibilityHint: "Nutze die E-Mail-Adresse deines Kontos.",
                     onSubmit: { isPasswordFocused = true },
                     isFocused: $isEmailFocused
                 )
                 AuthField(
+                    label: "Passwort",
                     icon: "lock",
                     placeholder: "Passwort",
                     text: $password,
                     isSecure: true,
                     textContentType: .password,
                     returnKeyType: .go,
+                    accessibilityHint: "Gib dein Kontopasswort ein.",
                     onSubmit: { Task { await authVM.login(email: email, password: password) } },
                     isFocused: $isPasswordFocused
                 )
@@ -203,7 +205,7 @@ private struct RegisterView: View {
                             Rectangle()
                                 .fill(theme.colors.accent)
                                 .frame(width: 2, height: 42)
-                            Text("Damit eure Räume und Matches erhalten bleiben.")
+                            Text("Damit eure Matches und Favoriten erhalten bleiben.")
                                 .font(theme.fonts.body(size: 16, weight: .regular))
                                 .italic()
                                 .foregroundColor(theme.colors.textSecondary)
@@ -213,27 +215,42 @@ private struct RegisterView: View {
 
                         VStack(spacing: 4) {
                             AuthField(
+                                label: "Name",
                                 icon: "person", placeholder: "Name", text: $name,
                                 textContentType: .name,
-                                returnKeyType: .next, onSubmit: { isEmailFocused = true },
+                                returnKeyType: .next,
+                                autocapitalizationType: .words,
+                                autocorrectionType: .default,
+                                spellCheckingType: .default,
+                                accessibilityHint: "So sehen andere dich in Watchd.",
+                                onSubmit: { isEmailFocused = true },
                                 isFocused: $isNameFocused
                             )
                             AuthField(
+                                label: "E-Mail-Adresse",
                                 icon: "envelope", placeholder: "E-Mail", text: $email,
                                 keyboardType: .emailAddress, textContentType: .emailAddress,
-                                returnKeyType: .next, onSubmit: { isPasswordFocused = true },
+                                returnKeyType: .next,
+                                accessibilityHint: "Diese Adresse nutzt du später zum Anmelden.",
+                                onSubmit: { isPasswordFocused = true },
                                 isFocused: $isEmailFocused
                             )
                             AuthField(
+                                label: "Passwort",
                                 icon: "lock", placeholder: "Passwort", text: $password,
                                 isSecure: true, textContentType: .newPassword,
-                                returnKeyType: .next, onSubmit: { isConfirmPasswordFocused = true },
+                                returnKeyType: .next,
+                                accessibilityHint: "Mindestens acht Zeichen.",
+                                passwordRulesDescriptor: "minlength: 8;",
+                                onSubmit: { isConfirmPasswordFocused = true },
                                 isFocused: $isPasswordFocused
                             )
                             AuthField(
+                                label: "Passwort bestätigen",
                                 icon: "lock", placeholder: "Bestätigen", text: $confirmPassword,
-                                isSecure: true, textContentType: .newPassword,
+                                isSecure: true,
                                 returnKeyType: .join,
+                                accessibilityHint: "Wiederhole dein neues Passwort.",
                                 onSubmit: { Task { await register() } },
                                 isFocused: $isConfirmPasswordFocused
                             )
@@ -327,10 +344,11 @@ private struct RegisterView: View {
 // MARK: - Editorial Auth Field
 //
 // Underline-style input: no filled background, thin bottom-stroke, accent
-// when focused. Shared by AuthView / UpgradeAccountView / PasswordResetViews.
+// when focused. Shared by AuthView / PasswordResetViews.
 
 struct AuthField: View {
     @Environment(\.theme) private var theme
+    let label: String
     let icon: String
     let placeholder: String
     @Binding var text: String
@@ -338,13 +356,25 @@ struct AuthField: View {
     var isSecure: Bool = false
     var textContentType: UITextContentType? = nil
     var returnKeyType: UIReturnKeyType = .done
+    var autocapitalizationType: UITextAutocapitalizationType = .none
+    var autocorrectionType: UITextAutocorrectionType = .no
+    var spellCheckingType: UITextSpellCheckingType = .no
+    var accessibilityHint: String? = nil
+    var passwordRulesDescriptor: String? = nil
     var onSubmit: (() -> Void)? = nil
     var isFocused: Binding<Bool>? = nil
 
     private var focused: Bool { isFocused?.wrappedValue ?? false }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label)
+                .font(theme.fonts.microCaption)
+                .textCase(.uppercase)
+                .tracking(1.3)
+                .foregroundColor(focused ? theme.colors.accent : theme.colors.textTertiary)
+                .animation(theme.motion.easeOutQuart, value: focused)
+
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.system(size: 15, weight: .regular))
@@ -359,6 +389,12 @@ struct AuthField: View {
                     isSecure: isSecure,
                     textContentType: textContentType,
                     returnKeyType: returnKeyType,
+                    autocapitalizationType: autocapitalizationType,
+                    autocorrectionType: autocorrectionType,
+                    spellCheckingType: spellCheckingType,
+                    accessibilityLabel: label,
+                    accessibilityHint: accessibilityHint,
+                    passwordRulesDescriptor: passwordRulesDescriptor,
                     uiFont: resolveBodyUIFont(size: 16),
                     textColor: UIColor(theme.colors.textPrimary),
                     placeholderColor: UIColor(theme.colors.textTertiary),
