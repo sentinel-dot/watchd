@@ -7,19 +7,23 @@ import UIKit
 
 struct MainTabView: View {
     @Environment(\.theme) private var theme
+    @State private var selectedTab: MainTab = .partners
+    @State private var partnerTabNeedsAttention = false
 
     init() {
         Self.applyTabBarAppearance(for: .velvetHour)
     }
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationStack {
                 PartnersView()
             }
             .tabItem {
                 Label("Partner", systemImage: "person.2.fill")
             }
+            .badge(partnerTabNeedsAttention ? Text("!") : nil)
+            .tag(MainTab.partners)
 
             NavigationStack {
                 FavoritesListView()
@@ -27,6 +31,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Favoriten", systemImage: "star.fill")
             }
+            .tag(MainTab.favorites)
 
             NavigationStack {
                 ProfileView()
@@ -34,8 +39,37 @@ struct MainTabView: View {
             .tabItem {
                 Label("Profil", systemImage: "person.crop.circle.fill")
             }
+            .tag(MainTab.profile)
         }
         .tint(theme.colors.accent)
+        .onAppear {
+            AppNavigation.consumePendingNavigation()
+        }
+        .onChange(of: selectedTab) { _, tab in
+            if tab == .partners {
+                partnerTabNeedsAttention = false
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .watchdOpenPartnersTab)) { notification in
+            let shouldMark = notification.userInfo?["markNeedsAttention"] as? Bool ?? false
+            let wasShowingPartners = selectedTab == .partners
+            selectedTab = .partners
+            partnerTabNeedsAttention = shouldMark && !wasShowingPartners
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .watchdPartnersTabNeedsAttention)) { _ in
+            if selectedTab != .partners {
+                partnerTabNeedsAttention = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .watchdOpenPartnership)) { _ in
+            selectedTab = .partners
+        }
+    }
+
+    private enum MainTab: Hashable {
+        case partners
+        case favorites
+        case profile
     }
 
     private static func applyTabBarAppearance(for theme: Theme) {

@@ -41,12 +41,17 @@ struct watchdApp: App {
         UINavigationBar.appearance().backgroundColor = base
     }
 
-    // Handles watchd:// custom URL scheme (reset-password; add-partner kommt in Phase 8)
+    // Handles watchd:// custom URL scheme
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == "watchd" else { return }
 
         if url.host == "reset-password", let token = url.queryParameters?["token"] {
             postResetPasswordNotification(token: token)
+            return
+        }
+
+        if let code = addPartnerCode(from: url) {
+            handleAddPartnerCode(code)
         }
     }
 
@@ -57,6 +62,11 @@ struct watchdApp: App {
            let token = components.queryItems?.first(where: { $0.name == "token" })?.value,
            !token.isEmpty {
             postResetPasswordNotification(token: token)
+            return
+        }
+
+        if let code = addPartnerCode(from: url) {
+            handleAddPartnerCode(code)
         }
     }
 
@@ -66,6 +76,31 @@ struct watchdApp: App {
             object: nil,
             userInfo: ["token": token]
         )
+    }
+
+    private func handleAddPartnerCode(_ rawCode: String) {
+        guard let code = AppNavigation.normalizedShareCode(from: rawCode) else { return }
+
+        if authViewModel.isAuthenticated {
+            AppNavigation.openPartnersTab()
+            AppNavigation.openAddPartner(rawCode: code)
+        } else {
+            AppNavigation.queueAddPartnerCode(code)
+        }
+    }
+
+    private func addPartnerCode(from url: URL) -> String? {
+        if url.scheme == "watchd" {
+            guard url.host == "add" else { return nil }
+            if let code = url.pathComponents.dropFirst().first, !code.isEmpty {
+                return code
+            }
+            return url.queryParameters?["code"]
+        }
+
+        let parts = url.pathComponents.filter { $0 != "/" }
+        guard parts.first == "add", parts.count >= 2 else { return nil }
+        return parts[1]
     }
 }
 

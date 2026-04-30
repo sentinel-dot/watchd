@@ -119,8 +119,14 @@ watchd/watchd/
 │                          # README.md listet Quellen + erwartete Dateinamen (= PostScript-
 │                          # Name). Fehlen Files → Fallback auf Systemfonts, kein Crash
 └── Views/
-    ├── AuthView.swift             # Login / Register / Forgot-Password Entry-Screen
-    │                              # (Guest-Button entfernt; Apple-Placeholder TODO Phase 9)
+    ├── AuthView.swift             # Premium Auth-Landing im Velvet-Hour-Stil mit rotierendem
+    │                              # Hero-Wort (Watchd/Zu zweit/Swipen/Match finden/Filmabend),
+    │                              # vorbereitetem Apple-/Google-Action-Dock (Phase 9/10
+    │                              # zeigt bis zur echten Umsetzung "Noch nicht implementiert")
+    │                              # und Login/Register als sekundäre Sheets;
+    │                              # AuthField mit persistenter Feld-Label-Zeile, iOS-semantic
+    │                              # textContentTypes (Login `username` + `password`,
+    │                              # Register/Reset `newPassword`), Accessibility-Hints
     ├── MainTabView.swift          # Auth-Root: 3-Tab-Container (Partner / Favoriten / Profil),
     │                              # pro Tab eigene NavigationStack; UITabBarAppearance getintet.
     │                              # TabBar wird in SwipeView via .toolbar(.hidden, for: .tabBar)
@@ -179,8 +185,9 @@ watchd/watchd/
 ```
 App Launch → ContentView
 ├── NICHT AUTH → AuthView
-│   ├── Login (email + password)
-│   ├── Register-Sheet
+│   ├── Premium Landing: rotierendes Hero-Wort + Apple/Google-Dock (Phase 9/10 vorbereitet)
+│   ├── Anmelden-Sheet (email + password)
+│   ├── Registrieren-Sheet
 │   └── Passwort vergessen → Reset-Mail → deep link → ResetPasswordView
 └── AUTH → MainTabView (3 Tabs, jeder mit eigener NavigationStack)
     ├── Tab "Partner" → PartnersView (Section-List)
@@ -208,7 +215,8 @@ App Launch → ContentView
 
 Deep Links:
   watchd://reset-password?token=TOKEN → ResetPasswordView Sheet
-  (watchd://add/CODE kommt in Phase 8)
+  watchd://add/CODE → AddPartnerSheet mit Code-Prefill; queued bis nach Login
+  https://watchd.up.railway.app/add/CODE → Universal Link auf denselben Add-Partner-Flow
 ```
 
 ---
@@ -313,7 +321,7 @@ Aktueller Repo-Stand:
 
 | Status        | Thema                                                                                                                                                                                                  |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **in Arbeit** | Partnerships-Refactor: Rooms → persistente Partnerschaften, Gast-Zugang weg, Share-Codes mit Double-Opt-In, Apple Sign-In. Plan + Phasen im Parent-Repo `docs/partnerships-refactor-plan.md`. Branch: `refactor/partnerships`. **Phasen 5–7 fertig** (2026-04-26): iOS-UI komplett auf Partnership-Welt umgestellt. Phase 7 (Views): `PartnersView` (Section-List Eingehend/Partner/Ausstehend) ersetzt `RoomsView`; neue `AddPartnerSheet`, `PartnerFiltersView`, Overflow-Views `PendingRequestsView` / `OutgoingRequestsView` / `AllPartnersView`. `SwipeView.init(partnership:)`, `MatchView`/`MatchesListView` auf `partnershipId`, `Match.partnershipId` (statt `roomId`). `AuthView`: Guest-Button raus. `ProfileView`: Archiv + Konto-sichern raus, neue „Dein Code"-Section mit Copy + Regenerate. `MainTabView`: Tab heißt jetzt „Partner". `watchdApp`: `watchd://join/...` Deep-Link entfernt (nur `reset-password` bleibt). **Cleanup**: 6 Legacy-Views gelöscht (RoomsView, RoomFiltersView, CreateRoomSheet, ArchivedRoomsView, GuestUpgradePromptSheet, UpgradeAccountView), `RoomModels.swift` weg, alte Room-Methoden in `APIService` (createRoom/joinRoom/getRoom(s)/updateRoom*/leaveRoom/deleteFromArchive/getMovieFeed/getNextMovie/submitSwipe/getMatches) und `SocketService.connect(token:roomId:)` + `roomDissolvedPublisher` + `filtersUpdatedPublisher<RoomFilters>` raus. Phase 8 (Deep Links + Push-Payloads) und Phase 9 (Apple Sign-In) als nächstes. |
+| **in Arbeit** | Partnerships-Refactor: Rooms → persistente Partnerschaften, Gast-Zugang weg, Share-Codes mit Double-Opt-In, Apple Sign-In. Plan + Phasen im Parent-Repo `docs/partnerships-refactor-plan.md`. Branch: `refactor/partnerships`. **Phasen 5–8 fertig** (Phase 8 am 2026-04-30): iOS-UI und Deep-Link/Push-Routing sind auf Partnership-Welt umgestellt. Phase 7 (Views): `PartnersView` (Section-List Eingehend/Partner/Ausstehend) ersetzt `RoomsView`; neue `AddPartnerSheet`, `PartnerFiltersView`, Overflow-Views `PendingRequestsView` / `OutgoingRequestsView` / `AllPartnersView`. Phase 8: `watchd://add/CODE` und Universal Link `/add/:code` öffnen `AddPartnerSheet` mit Prefill oder werden bis nach Login gequeued; Push-Taps für `partnership_request` öffnen/markieren den Partner-Tab, `partnership_accepted` und `match` öffnen die betroffene Partnerschaft. `AuthView`: Guest-Button raus; seit 2026-04-28 Premium-Startscreen mit rotierendem Hero-Wort, Apple-/Google-Dock als Phase-9/10-Provider-Skeletons mit "Noch nicht implementiert"-Alert. **Cleanup**: 6 Legacy-Views gelöscht (RoomsView, RoomFiltersView, CreateRoomSheet, ArchivedRoomsView, GuestUpgradePromptSheet, UpgradeAccountView), `RoomModels.swift` weg, alte Room-Methoden aus `APIService` raus. Phase 9 (Apple Sign-In) als nächstes. |
 
 ---
 

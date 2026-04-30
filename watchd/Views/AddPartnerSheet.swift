@@ -3,10 +3,15 @@ import SwiftUI
 struct AddPartnerSheet: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = AddPartnerViewModel()
+    @StateObject private var viewModel: AddPartnerViewModel
     @FocusState private var focused: Bool
 
     let onSuccess: (Partnership) -> Void
+
+    init(initialCode: String? = nil, onSuccess: @escaping (Partnership) -> Void) {
+        self.onSuccess = onSuccess
+        _viewModel = StateObject(wrappedValue: AddPartnerViewModel(initialCode: initialCode ?? ""))
+    }
 
     var body: some View {
         NavigationStack {

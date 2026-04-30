@@ -12,6 +12,7 @@ struct PartnersView: View {
     @StateObject private var viewModel = PartnersViewModel()
 
     @State private var showAddPartnerSheet = false
+    @State private var pendingAddPartnerCode: String?
     @State private var partnershipForFilters: Partnership?
     @State private var partnershipToDelete: Partnership?
     @State private var navigationPartnership: Partnership?
@@ -70,8 +71,10 @@ struct PartnersView: View {
         .navigationDestination(item: $navigationPartnership) { partnership in
             SwipeView(partnership: partnership)
         }
-        .sheet(isPresented: $showAddPartnerSheet) {
-            AddPartnerSheet { _ in
+        .sheet(isPresented: $showAddPartnerSheet, onDismiss: {
+            pendingAddPartnerCode = nil
+        }) {
+            AddPartnerSheet(initialCode: pendingAddPartnerCode) { _ in
                 Task { await viewModel.loadPartnerships(animated: false) }
             }
         }
@@ -101,6 +104,39 @@ struct PartnersView: View {
         }
         .task {
             await viewModel.loadPartnerships()
+        }
+        .onAppear {
+            AppNavigation.consumePendingNavigation()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .watchdOpenAddPartner)) { notification in
+            guard let code = notification.userInfo?["code"] as? String else { return }
+            pendingAddPartnerCode = code
+            showAddPartnerSheet = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .watchdOpenPartnership)) { notification in
+            guard let partnershipId = notification.userInfo?["partnershipId"] as? Int else { return }
+            Task { await openPartnership(id: partnershipId) }
+        }
+    }
+
+    private func openPartnership(id: Int) async {
+        if let partnership = viewModel.active.first(where: { $0.id == id }) {
+            navigationPartnership = partnership
+            AppNavigation.clearQueuedPartnership(id: id)
+            return
+        }
+
+        do {
+            let response = try await APIService.shared.fetchPartnership(id: id)
+            if response.partnership.status == "active" {
+                navigationPartnership = response.partnership
+            } else {
+                await viewModel.loadPartnerships(animated: false)
+            }
+            AppNavigation.clearQueuedPartnership(id: id)
+        } catch {
+            await viewModel.loadPartnerships(animated: false)
+            AppNavigation.clearQueuedPartnership(id: id)
         }
     }
 
@@ -305,6 +341,7 @@ struct PartnersView: View {
             .frame(height: 60)
 
             Button {
+                pendingAddPartnerCode = nil
                 showAddPartnerSheet = true
             } label: {
                 HStack(spacing: 10) {

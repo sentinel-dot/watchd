@@ -33,6 +33,32 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        handleForegroundNotification(notification.request.content.userInfo)
         completionHandler([.banner, .sound, .badge])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        Task { @MainActor in
+            AppNavigation.routeNotificationTap(userInfo: userInfo)
+        }
+        completionHandler()
+    }
+
+    private func handleForegroundNotification(_ userInfo: [AnyHashable: Any]) {
+        guard let type = userInfo["type"] as? String else { return }
+
+        switch type {
+        case "partnership_request", "partnership_accepted":
+            Task { @MainActor in
+                AppNavigation.markPartnersTabNeedsAttention()
+            }
+        default:
+            break
+        }
     }
 }

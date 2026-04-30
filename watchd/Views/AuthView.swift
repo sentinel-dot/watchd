@@ -2,91 +2,343 @@ import SwiftUI
 
 struct AuthView: View {
     @Environment(\.theme) private var theme
-    @EnvironmentObject private var authVM: AuthViewModel
-    @State private var showRegister = false
+    @State private var activeSheet: AuthSheet?
+    @State private var unavailableProvider: AuthProvider?
 
     var body: some View {
         ZStack {
             theme.colors.base.ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    mast
-                        .padding(.bottom, 36)
-
-                    tagline
-                        .padding(.bottom, 48)
-
-                    LoginForm(onRegisterTap: { showRegister = true })
-                        .padding(.bottom, 28)
-
-                    Rectangle()
-                        .fill(theme.colors.separator)
-                        .frame(height: 1)
-                        .padding(.bottom, 22)
-
-                    bottomActions
-                        .padding(.bottom, 40)
-                }
-                .padding(.horizontal, 28)
-                .padding(.top, 72)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .ignoresSafeArea(.keyboard, edges: .bottom)
+            AuthLanding(
+                onAppleTap: { unavailableProvider = .apple },
+                onGoogleTap: { unavailableProvider = .google },
+                onRegisterTap: { activeSheet = .register },
+                onLoginTap: { activeSheet = .login }
+            )
 
             KeyboardWarmupView()
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
         }
-        .sheet(isPresented: $showRegister) {
-            RegisterView()
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .login:
+                LoginSheetView(onRegisterTap: { activeSheet = .register })
+            case .register:
+                RegisterView()
+            }
+        }
+        .alert(item: $unavailableProvider) { provider in
+            Alert(
+                title: Text("Noch nicht implementiert"),
+                message: Text("\(provider.title) wird in \(provider.phase) aktiviert."),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+    }
+}
+
+private enum AuthSheet: String, Identifiable {
+    case login
+    case register
+
+    var id: String { rawValue }
+}
+
+private enum AuthProvider: String, Identifiable {
+    case apple
+    case google
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .apple:
+            return "Apple Anmeldung"
+        case .google:
+            return "Google Anmeldung"
         }
     }
 
-    private var mast: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Nº 01")
-                .font(theme.fonts.microCaption)
-                .textCase(.uppercase)
-                .tracking(1.8)
-                .foregroundColor(theme.colors.accent)
+    var phase: String {
+        switch self {
+        case .apple:
+            return "Phase 9"
+        case .google:
+            return "Phase 10"
+        }
+    }
+}
 
-            Text("Watchd.")
-                .font(theme.fonts.displayHero)
+// MARK: - Landing
+
+private struct AuthLanding: View {
+    @Environment(\.theme) private var theme
+    let onAppleTap: () -> Void
+    let onGoogleTap: () -> Void
+    let onRegisterTap: () -> Void
+    let onLoginTap: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 72)
+
+            VStack(spacing: 24) {
+                Text("Nº 01 · Watchd")
+                    .font(theme.fonts.microCaption)
+                    .textCase(.uppercase)
+                    .tracking(1.8)
+                    .foregroundColor(theme.colors.accent)
+
+                RotatingHeroWord()
+
+                Text("Zwei Menschen. Ein Film, auf den ihr beide Lust habt.")
+                    .font(theme.fonts.body(size: 16, weight: .regular))
+                    .foregroundColor(theme.colors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .frame(maxWidth: 300)
+            }
+            .padding(.horizontal, 28)
+            .frame(maxWidth: .infinity)
+
+            Spacer(minLength: 56)
+
+            AuthActionDock(
+                onAppleTap: onAppleTap,
+                onGoogleTap: onGoogleTap,
+                onRegisterTap: onRegisterTap,
+                onLoginTap: onLoginTap
+            )
+        }
+    }
+}
+
+private struct RotatingHeroWord: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var currentIndex = 0
+
+    private let words = ["Watchd.", "Zu zweit.", "Swipen.", "Match finden.", "Filmabend."]
+
+    var body: some View {
+        ZStack {
+            Text(words[currentIndex])
+                .id(currentIndex)
+                .font(theme.fonts.display(size: 46, weight: .regular))
                 .italic()
                 .foregroundColor(theme.colors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .transition(
+                    .asymmetric(
+                        insertion: .opacity.combined(with: .move(edge: .bottom)),
+                        removal: .opacity.combined(with: .move(edge: .top))
+                    )
+                )
+                .accessibilityLabel(words[currentIndex].replacingOccurrences(of: ".", with: ""))
         }
-    }
+        .frame(height: 66)
+        .task(id: reduceMotion) {
+            guard !reduceMotion else { return }
 
-    private var tagline: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Rectangle()
-                .fill(theme.colors.accent)
-                .frame(width: 2, height: 44)
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_750_000_000)
+                guard !Task.isCancelled else { return }
 
-            Text("Zwei Meinungen, ein Abend.")
-                .font(theme.fonts.body(size: 18, weight: .regular))
-                .italic()
-                .foregroundColor(theme.colors.textSecondary)
-                .lineSpacing(3)
-        }
-    }
-
-    private var bottomActions: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Button(action: { showRegister = true }) {
-                HStack(spacing: 6) {
-                    Text("Noch kein Konto?")
-                        .font(theme.fonts.bodyRegular)
-                        .foregroundColor(theme.colors.textSecondary)
-                    Text("Konto erstellen")
-                        .font(theme.fonts.bodyMedium)
-                        .foregroundColor(theme.colors.accent)
+                withAnimation(theme.motion.easeOutExpo) {
+                    currentIndex = (currentIndex + 1) % words.count
                 }
             }
+        }
+    }
+}
 
-            // TODO Phase 9: SignInWithAppleButton
+private struct AuthActionDock: View {
+    @Environment(\.theme) private var theme
+    let onAppleTap: () -> Void
+    let onGoogleTap: () -> Void
+    let onRegisterTap: () -> Void
+    let onLoginTap: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ProviderAuthButton(
+                title: "Mit Apple fortfahren",
+                icon: .system("apple.logo"),
+                style: .filled,
+                isEnabled: true,
+                action: onAppleTap
+            )
+            .accessibilityHint("Zeigt einen Hinweis, dass Apple Anmeldung in Phase 9 aktiviert wird.")
+
+            ProviderAuthButton(
+                title: "Mit Google fortfahren",
+                icon: .letter("G"),
+                style: .muted,
+                isEnabled: true,
+                action: onGoogleTap
+            )
+            .accessibilityHint("Zeigt einen Hinweis, dass Google Anmeldung in Phase 10 aktiviert wird.")
+
+            Button(action: onRegisterTap) {
+                Text("Registrieren")
+                    .font(theme.fonts.body(size: 17, weight: .semibold))
+                    .foregroundColor(theme.colors.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(theme.colors.surfaceInput)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            Button(action: onLoginTap) {
+                Text("Anmelden")
+                    .font(theme.fonts.body(size: 17, weight: .semibold))
+                    .foregroundColor(theme.colors.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(theme.colors.separator, lineWidth: 1)
+                    )
+            }
+            .padding(.top, 4)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 28)
+        .padding(.bottom, 28)
+        .frame(maxWidth: .infinity)
+        .background(
+            UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                .fill(theme.colors.overlayDark)
+                .overlay(
+                    UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                        .stroke(theme.colors.overlayLight, lineWidth: 1)
+                )
+                .ignoresSafeArea(edges: .bottom)
+        )
+    }
+}
+
+private enum ProviderIcon {
+    case system(String)
+    case letter(String)
+}
+
+private enum ProviderButtonStyle {
+    case filled
+    case muted
+}
+
+private struct ProviderAuthButton: View {
+    @Environment(\.theme) private var theme
+    let title: String
+    let icon: ProviderIcon
+    let style: ProviderButtonStyle
+    let isEnabled: Bool
+    let action: () -> Void
+
+    private var foregroundColor: Color {
+        switch style {
+        case .filled:
+            return theme.colors.base
+        case .muted:
+            return theme.colors.textPrimary
+        }
+    }
+
+    private var backgroundColor: Color {
+        switch style {
+        case .filled:
+            return theme.colors.textPrimary
+        case .muted:
+            return theme.colors.surfaceCard
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                switch icon {
+                case .system(let name):
+                    Image(systemName: name)
+                        .font(.system(size: 19, weight: .semibold))
+                case .letter(let letter):
+                    Text(letter)
+                        .font(theme.fonts.body(size: 19, weight: .bold))
+                }
+
+                Text(title)
+                    .font(theme.fonts.body(size: 17, weight: .semibold))
+            }
+            .foregroundColor(foregroundColor)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(backgroundColor)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .opacity(isEnabled ? 1 : 0.72)
+        }
+        .disabled(!isEnabled)
+    }
+}
+
+private struct LoginSheetView: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.dismiss) private var dismiss
+    let onRegisterTap: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                theme.colors.base.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Nº 02 · Anmelden")
+                                .font(theme.fonts.microCaption)
+                                .textCase(.uppercase)
+                                .tracking(1.8)
+                                .foregroundColor(theme.colors.accent)
+
+                            Text("Anmelden.")
+                                .font(theme.fonts.display(size: 36, weight: .regular))
+                                .italic()
+                                .foregroundColor(theme.colors.textPrimary)
+                        }
+                        .padding(.bottom, 28)
+
+                        Text("Weiter dort, wo euer Filmabend aufgehört hat.")
+                            .font(theme.fonts.body(size: 16, weight: .regular))
+                            .foregroundColor(theme.colors.textSecondary)
+                            .lineSpacing(4)
+                            .padding(.bottom, 42)
+
+                        LoginForm(onRegisterTap: onRegisterTap)
+
+                        Spacer(minLength: 60)
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 32)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(theme.colors.base, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { dismiss() }) {
+                        Text("Zurück")
+                            .font(theme.fonts.microCaption)
+                            .textCase(.uppercase)
+                            .tracking(1.4)
+                            .foregroundColor(theme.colors.textSecondary)
+                    }
+                }
+            }
         }
     }
 }
@@ -158,6 +410,19 @@ private struct LoginForm: View {
                     .foregroundColor(theme.colors.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .center)
+
+            Button(action: onRegisterTap) {
+                HStack(spacing: 6) {
+                    Text("Noch kein Konto?")
+                        .font(theme.fonts.caption)
+                        .foregroundColor(theme.colors.textSecondary)
+                    Text("Konto erstellen")
+                        .font(theme.fonts.body(size: 13, weight: .medium))
+                        .foregroundColor(theme.colors.accent)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .padding(.top, 2)
         }
         .sheet(isPresented: $showForgotPassword) {
             ForgotPasswordView()

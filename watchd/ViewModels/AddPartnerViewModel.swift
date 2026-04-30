@@ -9,6 +9,10 @@ final class AddPartnerViewModel: ObservableObject {
     static let codeLength = 8
     private static let allowedAlphabet = Set("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
 
+    init(initialCode: String = "") {
+        codeInput = Self.normalize(initialCode)
+    }
+
     static func normalize(_ raw: String) -> String {
         let upper = raw.uppercased()
         return String(upper.unicodeScalars.compactMap { scalar -> Character? in
