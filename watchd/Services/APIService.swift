@@ -113,7 +113,7 @@ actor APIService {
             throw APIError.unauthorized
         }
 
-        if http.statusCode == 401 {
+        if http.statusCode == 401 && requiresAuth {
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: NSNotification.Name("unauthorizedError"), object: nil)
             }

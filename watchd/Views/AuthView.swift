@@ -82,15 +82,23 @@ private struct AuthLanding: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            HStack(alignment: .bottom, spacing: 0) {
+                Text("W")
+                    .font(theme.fonts.display(size: 76, weight: .bold))
+                    .foregroundColor(theme.colors.textPrimary)
+                Text("atchd")
+                    .font(theme.fonts.display(size: 50, weight: .bold))
+                    .foregroundColor(theme.colors.accent)
+                    .padding(.bottom, 7)
+            }
+            .accessibilityLabel("Watchd")
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.horizontal, 28)
+            .padding(.top, 48)
+
             Spacer(minLength: 72)
 
             VStack(spacing: 24) {
-                Text("Nº 01 · Watchd")
-                    .font(theme.fonts.microCaption)
-                    .textCase(.uppercase)
-                    .tracking(1.8)
-                    .foregroundColor(theme.colors.accent)
-
                 RotatingHeroWord()
 
                 Text("Zwei Menschen. Ein Film, auf den ihr beide Lust habt.")
@@ -120,14 +128,13 @@ private struct RotatingHeroWord: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var currentIndex = 0
 
-    private let words = ["Watchd.", "Zu zweit.", "Swipen.", "Match finden.", "Filmabend."]
+    private let words = ["Zu zweit.", "Swipen.", "Match finden.", "Filmabend."]
 
     var body: some View {
         ZStack {
             Text(words[currentIndex])
                 .id(currentIndex)
                 .font(theme.fonts.display(size: 46, weight: .regular))
-                .italic()
                 .foregroundColor(theme.colors.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
@@ -286,6 +293,7 @@ private struct ProviderAuthButton: View {
 private struct LoginSheetView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var authVM: AuthViewModel
     let onRegisterTap: () -> Void
 
     var body: some View {
@@ -296,15 +304,8 @@ private struct LoginSheetView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(alignment: .leading, spacing: 14) {
-                            Text("Nº 02 · Anmelden")
-                                .font(theme.fonts.microCaption)
-                                .textCase(.uppercase)
-                                .tracking(1.8)
-                                .foregroundColor(theme.colors.accent)
-
                             Text("Anmelden.")
                                 .font(theme.fonts.display(size: 36, weight: .regular))
-                                .italic()
                                 .foregroundColor(theme.colors.textPrimary)
                         }
                         .padding(.bottom, 28)
@@ -339,6 +340,7 @@ private struct LoginSheetView: View {
                     }
                 }
             }
+            .onAppear { authVM.errorMessage = nil }
         }
     }
 }
@@ -358,17 +360,11 @@ private struct LoginForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            Text("Anmelden")
-                .font(theme.fonts.microCaption)
-                .textCase(.uppercase)
-                .tracking(1.6)
-                .foregroundColor(theme.colors.textTertiary)
-
             VStack(spacing: 4) {
                 AuthField(
                     label: "E-Mail-Adresse",
                     icon: "envelope",
-                    placeholder: "E-Mail",
+                    placeholder: "deine@email.de",
                     text: $email,
                     keyboardType: .emailAddress,
                     textContentType: .username,
@@ -380,7 +376,7 @@ private struct LoginForm: View {
                 AuthField(
                     label: "Passwort",
                     icon: "lock",
-                    placeholder: "Passwort",
+                    placeholder: "••••••••",
                     text: $password,
                     isSecure: true,
                     textContentType: .password,
@@ -454,14 +450,8 @@ private struct RegisterView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(alignment: .leading, spacing: 14) {
-                            Text("Nº 02 · Konto")
-                                .font(theme.fonts.microCaption)
-                                .textCase(.uppercase)
-                                .tracking(1.8)
-                                .foregroundColor(theme.colors.accent)
                             Text("Konto erstellen.")
                                 .font(theme.fonts.display(size: 34, weight: .regular))
-                                .italic()
                                 .foregroundColor(theme.colors.textPrimary)
                         }
                         .padding(.bottom, 28)
@@ -481,7 +471,7 @@ private struct RegisterView: View {
                         VStack(spacing: 4) {
                             AuthField(
                                 label: "Name",
-                                icon: "person", placeholder: "Name", text: $name,
+                                icon: "person", placeholder: "Dein Vorname", text: $name,
                                 textContentType: .name,
                                 returnKeyType: .next,
                                 autocapitalizationType: .words,
@@ -493,7 +483,7 @@ private struct RegisterView: View {
                             )
                             AuthField(
                                 label: "E-Mail-Adresse",
-                                icon: "envelope", placeholder: "E-Mail", text: $email,
+                                icon: "envelope", placeholder: "deine@email.de", text: $email,
                                 keyboardType: .emailAddress, textContentType: .emailAddress,
                                 returnKeyType: .next,
                                 accessibilityHint: "Diese Adresse nutzt du später zum Anmelden.",
@@ -502,7 +492,7 @@ private struct RegisterView: View {
                             )
                             AuthField(
                                 label: "Passwort",
-                                icon: "lock", placeholder: "Passwort", text: $password,
+                                icon: "lock", placeholder: "••••••••", text: $password,
                                 isSecure: true, textContentType: .newPassword,
                                 returnKeyType: .next,
                                 accessibilityHint: "Mindestens acht Zeichen.",
@@ -512,7 +502,7 @@ private struct RegisterView: View {
                             )
                             AuthField(
                                 label: "Passwort bestätigen",
-                                icon: "lock", placeholder: "Bestätigen", text: $confirmPassword,
+                                icon: "lock", placeholder: "••••••••", text: $confirmPassword,
                                 isSecure: true,
                                 returnKeyType: .join,
                                 accessibilityHint: "Wiederhole dein neues Passwort.",
@@ -520,12 +510,6 @@ private struct RegisterView: View {
                                 isFocused: $isConfirmPasswordFocused
                             )
                         }
-
-                        Text("Mindestens acht Zeichen.")
-                            .font(theme.fonts.caption)
-                            .foregroundColor(theme.colors.textTertiary)
-                            .padding(.top, 10)
-                            .padding(.bottom, 18)
 
                         if let msg = authVM.errorMessage {
                             Text(msg)
@@ -562,6 +546,7 @@ private struct RegisterView: View {
                     }
                 }
             }
+            .onAppear { authVM.errorMessage = nil }
         }
     }
 

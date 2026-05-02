@@ -162,6 +162,7 @@ struct AddPartnerSheet: View {
         .disabled(!viewModel.isValid || viewModel.isSubmitting)
         .opacity(viewModel.isValid ? 1.0 : 0.4)
     }
+
 }
 
 #Preview {

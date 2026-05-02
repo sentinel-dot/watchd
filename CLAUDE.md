@@ -33,6 +33,7 @@ watchd/watchd/
 │                         # environment objects: AuthViewModel, NetworkMonitor
 ├── ContentView.swift     # Root: AuthView (nicht auth) / MainTabView (auth); ResetPassword-Sheet
 ├── AppDelegate.swift     # APNs-Token → hex → POST /users/me/device-token; foreground notifications
+├── AppNavigation.swift   # App-interne Navigation-Events + queued Deep-Link/Push-Ziele
 ├── Config/
 │   ├── APIConfig.swift          # Base URLs (Debug: localhost:3000, Release: Railway); #if DEBUG
 │   ├── Theme.swift              # struct Theme (kein ThemeID, kein id-Feld) +
@@ -65,9 +66,13 @@ watchd/watchd/
 │   │                         # URLError.cancelled + Task.isCancelled → CancellationError
 │   │                         # (sonst zeigt pull-to-refresh den „Abgebrochen"-Alert)
 │   │                         # urlCache = nil + requestCachePolicy =
-│   │                         # .reloadIgnoringLocalCacheData — sonst hält URLCache
-│   │                         # GET /api/rooms heuristisch stale (Room-Status ändert
+│   │                         # .reloadIgnoringLocalCacheData — sonst cached URLCache
+│   │                         # GET-Antworten heuristisch (Partnership-Status ändert
 │   │                         # sich Socket-seitig ohne Cache-Control-Header).
+│   │                         # 401-Handling: nur bei requiresAuth:true → unauthorizedError-
+│   │                         # Notification + Logout. Bei requiresAuth:false (login/register)
+│   │                         # fällt 401 durch zum Server-Fehlertext-Parsing — verhindert
+│   │                         # „Sitzung abgelaufen"-Meldung bei falschen Credentials.
 │   │                         # Partnership-Methoden: fetchPartnerships,
 │   │                         # fetchPartnership, requestPartnership, acceptPartnership,
 │   │                         # declinePartnership, cancelPartnershipRequest,
@@ -125,14 +130,19 @@ watchd/watchd/
 │                          # README.md listet Quellen + erwartete Dateinamen (= PostScript-
 │                          # Name). Fehlen Files → Fallback auf Systemfonts, kein Crash
 └── Views/
-    ├── AuthView.swift             # Premium Auth-Landing im Velvet-Hour-Stil mit rotierendem
-    │                              # Hero-Wort (Watchd/Zu zweit/Swipen/Match finden/Filmabend),
-    │                              # vorbereitetem Apple-/Google-Action-Dock (Phase 9/10
-    │                              # zeigt bis zur echten Umsetzung "Noch nicht implementiert")
-    │                              # und Login/Register als sekundäre Sheets;
-    │                              # AuthField mit persistenter Feld-Label-Zeile, iOS-semantic
-    │                              # textContentTypes (Login `username` + `password`,
-    │                              # Register/Reset `newPassword`), Accessibility-Hints
+    ├── AuthView.swift             # Premium Auth-Landing im Velvet-Hour-Stil. Oben: natives
+    │                              # SwiftUI-Logo (BluuNext Bold „W" weiß + „atchd" Accent,
+    │                              # 76/50pt, kein PNG). Darunter: rotierendes Hero-Wort
+    │                              # (Zu zweit/Swipen/Match finden/Filmabend — „Watchd" entfernt)
+    │                              # in BluuNext non-italic 46pt. Apple-/Google-Dock Phase 9/10
+    │                              # mit „Noch nicht implementiert"-Alert. Login/Register als
+    │                              # Sheets ohne Nº-Labels und ohne Italic-Titel. AuthField:
+    │                              # persistente Label-Zeile, Passwort-Placeholder „••••••••",
+    │                              # E-Mail-Placeholder „deine@email.de", iOS-semantic
+    │                              # textContentTypes, Accessibility-Hints.
+    │                              # LoginSheetView + RegisterView: .onAppear löscht
+    │                              # authVM.errorMessage — verhindert Fehler-Bleeding zwischen
+    │                              # Sheets (z. B. Login-Fehler erscheint im Register-Sheet)
     ├── MainTabView.swift          # Auth-Root: 3-Tab-Container (Partner / Favoriten / Profil),
     │                              # pro Tab eigene NavigationStack; UITabBarAppearance getintet.
     │                              # TabBar wird in SwipeView via .toolbar(.hidden, for: .tabBar)
@@ -180,6 +190,7 @@ watchd/watchd/
     ├── PasswordResetViews.swift   # Forgot-Password-Request + Reset via Deep-Link-Token
     ├── LegalView.swift            # Datenschutz / Impressum / AGB
     ├── NativeTextField.swift      # UIViewRepresentable Wrapper für bessere Keyboard-Handles
+    ├── KeyboardWarmupView.swift   # UIViewRepresentable — primeIfNeeded() reduziert First-Tap-Lag
     └── SharedComponents.swift     # Wiederverwendbare UI-Bausteine (Buttons, Loader,
                                    # Empty-States, OfflineBanner, PrimaryButton)
 ```
@@ -191,7 +202,7 @@ watchd/watchd/
 ```
 App Launch → ContentView
 ├── NICHT AUTH → AuthView
-│   ├── Premium Landing: rotierendes Hero-Wort + Apple/Google-Dock (Phase 9/10 vorbereitet)
+│   ├── Premium Landing: natives Watchd-Logo oben (BluuNext) + rotierendes Hero-Wort + Apple/Google-Dock (Phase 9/10 vorbereitet)
 │   ├── Anmelden-Sheet (email + password)
 │   ├── Registrieren-Sheet
 │   └── Passwort vergessen → Reset-Mail → deep link → ResetPasswordView
