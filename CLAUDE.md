@@ -87,12 +87,17 @@ watchd/watchd/
 │                             # (PartnershipFilters), partnerLeftPublisher,
 │                             # partnerJoinedPublisher, partnershipRequestPublisher,
 │                             # partnershipAcceptedPublisher, partnershipEndedPublisher.
-│                             # Lazy connect — nur beim Betreten der SwipeView
+│                             # Lifecycle: connect() bei Login/Session-Restore (AuthViewModel);
+│                             # disconnect() bei Logout/deleteAccount/unauthorizedError.
+│                             # SwipeView upgraded auf user+partnership Channel (partnershipId).
+│                             # Reconnect bei App-Foreground via SwipeViewModel.reconnectSocketIfNeeded()
 ├── ViewModels/
 │   ├── AuthViewModel.swift       # Singleton (AuthViewModel.shared); loadSession() aus Keychain;
 │   │                             # login, register, updateName, logout, deleteAccount;
 │   │                             # requestPushPermissionIfNeeded();
 │   │                             # setupUnauthorizedListener() reagiert auf 401s.
+│   │                             # Socket-Lifecycle: connect() in loadSession() + persistSession();
+│   │                             # disconnect() in logout() + deleteAccount() + handleUnauthorized().
 │   │                             # Phase 6: guestLogin / upgradeAccount entfernt (Gast-Zugang weg)
 │   ├── PartnersViewModel.swift   # loadPartnerships() liefert {incoming, outgoing, active};
 │   │                             # acceptRequest / declineRequest / cancelRequest /
@@ -110,10 +115,11 @@ watchd/watchd/
 │   │                             # Subscriptions: match, partnerFiltersUpdated, partnerLeft,
 │   │                             # partnershipEnded; reconnectSocketIfNeeded() beim
 │   │                             # App-Foreground. Phase 6: Guest-Upgrade-Prompt komplett raus
-│   ├── MatchesViewModel.swift    # init(partnershipId:); fetchMatches() paginiert; mehr
-│   │                             # laden bei letzten 5; min 450ms
-│   └── FavoritesViewModel.swift  # loadFavorites(), toggleFavorite(), removeFavorite(),
-│                                  # isFavorite(); paginiert; mehr laden bei letzten 5; min 450ms
+│   ├── MatchesViewModel.swift    # init(partnershipId:); fetchMatches(animated:) paginiert; mehr
+│   │                             # laden bei letzten 5; min 450ms nur bei animated:true (initial)
+│   └── FavoritesViewModel.swift  # loadFavorites(animated:), toggleFavorite(), removeFavorite(),
+│                                  # isFavorite(); paginiert; mehr laden bei letzten 5;
+│                                  # min 450ms nur bei animated:true (initial)
 ├── Fonts/                 # OFL-Font-Dateien für Velvet Hour: BluuNext-Bold/-BoldItalic +
 │                          # Manrope-Regular/Medium/SemiBold/Bold (6 Dateien, alle im Bundle).
 │                          # README.md listet Quellen + erwartete Dateinamen (= PostScript-
@@ -290,9 +296,9 @@ Aktueller Repo-Stand:
 - Alle ViewModels sind `@MainActor ObservableObject` mit `@Published` State
 - API-Antworten werden mit `keyDecodingStrategy = .convertFromSnakeCase` dekodiert — Model-Properties also camelCase, Backend-Felder snake_case
 - Neue `.swift`-Dateien in `watchd/watchd/` werden von Xcode 16 automatisch erfasst — **kein Projektfile-Edit nötig, keinen Drag-to-Project-Schritt**
-- Socket.io-Verbindung ist **lazy** — nur beim Betreten einer SwipeView wird connected; beim Verlassen disconnect. Spart Akku + hält Socket-Count niedrig
+- Socket.io-Verbindung ist an den **Auth-Lifecycle** gebunden — `connect()` in `AuthViewModel.loadSession()` und `persistSession()` (Login/Register), `disconnect()` in `logout()`, `deleteAccount()`, `handleUnauthorized()`. Damit sind Partnership-Events (Request, Accepted, Ended) immer erreichbar, egal auf welchem Tab. SwipeView upgraded auf user+partnership-Channel via `SwipeViewModel.startSocket()` — beim Verlassen der SwipeView bleibt der user-Channel aktiv
 - **TabBar-Hide in Immersive-Screens** via `.toolbar(.hidden, for: .tabBar)` — aktuell in `SwipeView`. Sheets überlagern die TabBar automatisch, brauchen den Modifier nicht. Neue Immersive-Views explizit ergänzen
-- Ladeanimationen haben **min 450 ms Dauer** (PartnersViewModel, MatchesViewModel, FavoritesViewModel) — verhindert Flackern bei schnellen Requests
+- Ladeanimationen haben **min 450 ms Dauer beim initialen Load** (PartnersViewModel, MatchesViewModel, FavoritesViewModel) — verhindert Flackern. Pull-to-Refresh übergibt `animated: false` und überspringt die Mindestdauer; iOS-native Spinner hat eigene ~300 ms Dismiss-Animation
 - Min 450 ms und 100 pt Drag-Threshold sind bewusste UX-Werte, nicht zufällig — beim Ändern testen
 - Theme-Zugriff in allen Views: `@Environment(\.theme) var theme`, dann `theme.colors.X` / `theme.fonts.X` / `theme.spacing.X` / `theme.motion.X`. Kein ThemeManager, kein Switcher — Theme ist statisch Velvet Hour
 - Neue Font-Dateien **nicht** in Info.plist eintragen — Target nutzt `GENERATE_INFOPLIST_FILE = YES`. Stattdessen File-Name in `FontRegistry.bundledFonts` aufnehmen (Name = PostScript-Name); `CTFontManagerRegisterFontsForURL` zieht sie beim App-Launch
@@ -306,7 +312,7 @@ Aktueller Repo-Stand:
 - NICHT: Neue Swift-Dateien manuell zum Xcode-Projekt hinzufügen (PBXFileSystemSynchronizedRootGroup erfasst sie automatisch — manuelles Hinzufügen erzeugt Duplikat-Errors)
 - NICHT: `APIConfig.swift` hardcoded URLs von `localhost` auf Railway ändern, ohne `#if DEBUG` — sonst funktioniert Dev-Build nicht mehr
 - NICHT: Push-Capability vergessen beim neuen Provisioning-Profile — `registerForRemoteNotifications()` schlägt dann lautlos fehl, User kriegt nie Match-Push
-- NICHT: Socket.io eager connecten (direkt beim App-Start) — nur beim Betreten der SwipeView, sonst unnötige Connections für User, die gerade nicht swipen
+- NICHT: Socket-Verbindung in View-`onAppear` oder `task` managen — Lifecycle gehört in `AuthViewModel`, nicht in Views oder ViewModels außer `SwipeViewModel` (der den partnership-Channel braucht)
 - NICHT: `WatchdTheme.X`-Call-Sites reanimieren — der Shim wurde in Phase 4 gelöscht; alle Views greifen über `@Environment(\.theme)` zu
 - NICHT: Konfetti, Partikel-Effekte oder Gamifizierungs-Overlays in `MatchView` reintragen — das kanonische Muster ist radialer Accent-Bloom + staggered Reveal + `.success`-Haptik (Duolingo-Rhythmus, nicht -Optik; siehe `.impeccable.md` §3 Design-Prinzip 5)
 - NICHT: Animationen ohne `@Environment(\.accessibilityReduceMotion)`-Gate bauen — Bloom, Stagger und Button-Press müssen bei Reduce-Motion auf Opacity-only fallen

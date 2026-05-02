@@ -40,6 +40,9 @@ struct FavoritesListView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 40)
                 }
+                .refreshable {
+                    await viewModel.loadFavorites(animated: false)
+                }
             }
         }
         .navigationTitle("Favoriten")
@@ -52,9 +55,6 @@ struct FavoritesListView: View {
             Text(viewModel.errorMessage ?? "")
         }
         .task {
-            await viewModel.loadFavorites()
-        }
-        .refreshable {
             await viewModel.loadFavorites()
         }
     }

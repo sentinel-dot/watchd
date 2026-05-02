@@ -9,11 +9,30 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL:            return "Invalid URL"
-        case .unauthorized:          return "Session expired. Please log in again."
-        case .serverError(let msg):  return msg
-        case .decodingError(let e):  return "Data error: \(e.localizedDescription)"
-        case .networkError(let e):   return e.localizedDescription
+        case .invalidURL:
+            return "Ungültige Server-URL"
+        case .unauthorized:
+            return "Sitzung abgelaufen. Bitte melde dich erneut an."
+        case .serverError(let msg):
+            return msg
+        case .decodingError:
+            return "Fehler beim Verarbeiten der Server-Antwort"
+        case .networkError(let e):
+            if let urlError = e as? URLError {
+                switch urlError.code {
+                case .notConnectedToInternet:
+                    return "Keine Internetverbindung"
+                case .timedOut:
+                    return "Zeitüberschreitung – bitte erneut versuchen"
+                case .networkConnectionLost:
+                    return "Verbindung unterbrochen – bitte erneut versuchen"
+                case .cannotConnectToHost, .cannotFindHost:
+                    return "Server nicht erreichbar"
+                default:
+                    return "Netzwerkfehler – bitte erneut versuchen"
+                }
+            }
+            return "Netzwerkfehler – bitte erneut versuchen"
         }
     }
 }
@@ -103,7 +122,7 @@ actor APIService {
 
         guard (200...299).contains(http.statusCode) else {
             let errorBody = try? JSONDecoder().decode(ErrorResponse.self, from: data)
-            let msg = errorBody?.message ?? errorBody?.error ?? "Server error (\(http.statusCode))"
+            let msg = errorBody?.message ?? errorBody?.error ?? "Serverfehler (\(http.statusCode))"
             throw APIError.serverError(msg)
         }
 

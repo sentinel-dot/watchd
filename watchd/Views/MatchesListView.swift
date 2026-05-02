@@ -46,6 +46,9 @@ struct MatchesListView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 40)
                 }
+                .refreshable {
+                    await viewModel.fetchMatches(animated: false)
+                }
             }
         }
         .navigationTitle("Matches")
@@ -58,9 +61,6 @@ struct MatchesListView: View {
             Text(viewModel.errorMessage ?? "")
         }
         .task {
-            await viewModel.fetchMatches()
-        }
-        .refreshable {
             await viewModel.fetchMatches()
         }
     }

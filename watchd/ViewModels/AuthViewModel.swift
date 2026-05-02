@@ -28,6 +28,7 @@ final class AuthViewModel: ObservableObject {
         currentUser = User(id: id, name: name, email: email)
         isAuthenticated = true
         requestPushPermissionIfNeeded()
+        SocketService.shared.connect(token: token, partnershipId: nil)
     }
 
     private func setupUnauthorizedListener() {
@@ -134,6 +135,7 @@ final class AuthViewModel: ObservableObject {
 
         currentUser = response.user
         requestPushPermissionIfNeeded()
+        SocketService.shared.connect(token: response.token, partnershipId: nil)
     }
 
     private func requestPushPermissionIfNeeded() {

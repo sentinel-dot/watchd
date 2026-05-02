@@ -13,7 +13,7 @@ final class FavoritesViewModel: ObservableObject {
     private var isFetchingMore = false
     private let pageSize = 20
 
-    func loadFavorites() async {
+    func loadFavorites(animated: Bool = true) async {
         let start = ContinuousClock.now
         isLoading = true
         errorMessage = nil
@@ -26,10 +26,12 @@ final class FavoritesViewModel: ObservableObject {
             hasMore = response.pagination?.hasMore ?? false
             currentOffset = response.favorites.count
             hasLoadedOnce = true
-            let elapsed = ContinuousClock.now - start
-            let minDuration: Duration = .milliseconds(450)
-            if elapsed < minDuration {
-                try? await Task.sleep(for: minDuration - elapsed)
+            if animated {
+                let elapsed = ContinuousClock.now - start
+                let minDuration: Duration = .milliseconds(450)
+                if elapsed < minDuration {
+                    try? await Task.sleep(for: minDuration - elapsed)
+                }
             }
         } catch is CancellationError {
             return

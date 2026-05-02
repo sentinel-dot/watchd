@@ -51,7 +51,7 @@ struct PartnersView: View {
                         .padding(.bottom, 200)
                     }
                     .refreshable {
-                        await viewModel.loadPartnerships()
+                        await viewModel.loadPartnerships(animated: false)
                     }
                 }
             }

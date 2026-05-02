@@ -18,7 +18,7 @@ final class MatchesViewModel: ObservableObject {
         self.partnershipId = partnershipId
     }
 
-    func fetchMatches() async {
+    func fetchMatches(animated: Bool = true) async {
         let start = ContinuousClock.now
         isLoading = true
         errorMessage = nil
@@ -36,10 +36,12 @@ final class MatchesViewModel: ObservableObject {
             hasMore = response.pagination?.hasMore ?? false
             currentOffset = response.matches.count
             hasLoadedOnce = true
-            let elapsed = ContinuousClock.now - start
-            let minDuration: Duration = .milliseconds(450)
-            if elapsed < minDuration {
-                try? await Task.sleep(for: minDuration - elapsed)
+            if animated {
+                let elapsed = ContinuousClock.now - start
+                let minDuration: Duration = .milliseconds(450)
+                if elapsed < minDuration {
+                    try? await Task.sleep(for: minDuration - elapsed)
+                }
             }
         } catch is CancellationError {
             return
