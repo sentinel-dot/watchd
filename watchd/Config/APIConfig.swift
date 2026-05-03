@@ -7,7 +7,7 @@ enum APIConfig {
     #if DEBUG
     private static let backendBaseURL = "http://localhost:3000"
     #else
-    private static let backendBaseURL = "http://192.168.178.33:3000"
+    private static let backendBaseURL = "https://watchd.up.railway.app"
     #endif
 
     static var baseURL: String { "\(backendBaseURL)/api" }
