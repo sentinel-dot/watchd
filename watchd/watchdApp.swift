@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import UserNotifications
+import GoogleSignIn
 
 @main
 struct watchdApp: App {
@@ -11,6 +12,7 @@ struct watchdApp: App {
     init() {
         FontRegistry.registerAll()
         Self.applyNavigationBarAppearance(for: .velvetHour)
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: APIConfig.googleClientId)
     }
 
     var body: some Scene {
@@ -21,6 +23,8 @@ struct watchdApp: App {
                 .environment(\.theme, .velvetHour)
                 .preferredColorScheme(.dark)
                 .onOpenURL { url in
+                    // Google Sign-In redirect (e.g. from the Google app)
+                    if GIDSignIn.sharedInstance.handle(url) { return }
                     handleDeepLink(url)
                 }
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in

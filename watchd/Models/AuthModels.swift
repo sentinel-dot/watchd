@@ -37,6 +37,10 @@ struct AppleAuthRequest: Encodable {
     let name: String?
 }
 
+struct GoogleAuthRequest: Encodable {
+    let idToken: String
+}
+
 struct User: Decodable, Identifiable {
     let id: Int
     let name: String

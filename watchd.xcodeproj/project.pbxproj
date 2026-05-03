@@ -6,13 +6,31 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		177858F82FA7636800619265 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 177858F72FA7636800619265 /* GoogleSignIn */; };
+		177858FA2FA7636800619265 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 177858F92FA7636800619265 /* GoogleSignInSwift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		17F1945E2F4E0DAF00925BCC /* watchd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = watchd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		177858FC2FA7639400619265 /* Exceptions for "watchd" folder in "watchd" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 17F1945D2F4E0DAF00925BCC /* watchd */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		17F194602F4E0DAF00925BCC /* watchd */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				177858FC2FA7639400619265 /* Exceptions for "watchd" folder in "watchd" target */,
+			);
 			path = watchd;
 			sourceTree = "<group>";
 		};
@@ -23,6 +41,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				177858F82FA7636800619265 /* GoogleSignIn in Frameworks */,
+				177858FA2FA7636800619265 /* GoogleSignInSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +85,8 @@
 			);
 			name = watchd;
 			packageProductDependencies = (
+				177858F72FA7636800619265 /* GoogleSignIn */,
+				177858F92FA7636800619265 /* GoogleSignInSwift */,
 			);
 			productName = watchd;
 			productReference = 17F1945E2F4E0DAF00925BCC /* watchd.app */;
@@ -95,6 +117,9 @@
 			);
 			mainGroup = 17F194552F4E0DAF00925BCC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				177858F62FA7636800619265 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 17F1945F2F4E0DAF00925BCC /* Products */;
 			projectDirPath = "";
@@ -257,15 +282,9 @@
 				DEVELOPMENT_TEAM = RNK5A8AP8B;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = watchd/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Watchd;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleURLName = "com.milinkovic.watchd";
-						CFBundleURLSchemes = (
-							watchd,
-						);
-					},
-				);
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.milinkovic.watchd\";\n    CFBundleURLSchemes =     (\n        watchd\n    );\n}";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -296,15 +315,9 @@
 				DEVELOPMENT_TEAM = RNK5A8AP8B;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = watchd/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Watchd;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleURLName = "com.milinkovic.watchd";
-						CFBundleURLSchemes = (
-							watchd,
-						);
-					},
-				);
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.milinkovic.watchd\";\n    CFBundleURLSchemes =     (\n        watchd\n    );\n}";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -345,6 +358,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		177858F62FA7636800619265 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		177858F72FA7636800619265 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 177858F62FA7636800619265 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		177858F92FA7636800619265 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 177858F62FA7636800619265 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 17F194562F4E0DAF00925BCC /* Project object */;
 }

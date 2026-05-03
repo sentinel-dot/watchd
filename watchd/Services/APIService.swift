@@ -59,8 +59,7 @@ actor APIService {
 
     // MARK: - Generic Request
 
-    /// Whether a token refresh is currently in-flight (prevents parallel refreshes).
-    private var isRefreshing = false
+    private var refreshTask: Task<Bool, Never>?
 
     private func request<T: Decodable>(
         path: String,
@@ -133,36 +132,42 @@ actor APIService {
         }
     }
 
-    /// Attempts to refresh the access token using the stored refresh token.
     private func attemptTokenRefresh() async -> Bool {
-        guard !isRefreshing else { return false }
-        guard let refreshToken = KeychainHelper.load(forKey: KeychainHelper.refreshTokenKey) else { return false }
+        if let existingTask = refreshTask {
+            return await existingTask.value
+        }
 
-        isRefreshing = true
-        defer { isRefreshing = false }
-
-        do {
-            struct RefreshBody: Encodable { let refreshToken: String }
-            struct RefreshResponse: Decodable { let token: String; let refreshToken: String; let user: User }
-
-            let body = RefreshBody(refreshToken: refreshToken)
-            guard let url = URL(string: APIConfig.baseURL + "/auth/refresh") else { return false }
-
-            var req = URLRequest(url: url)
-            req.httpMethod = "POST"
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.httpBody = try encoder.encode(body)
-
-            let (data, response) = try await session.data(for: req)
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { return false }
-
-            let refreshResponse = try decoder.decode(RefreshResponse.self, from: data)
-            KeychainHelper.save(refreshResponse.token, forKey: KeychainHelper.tokenKey)
-            KeychainHelper.save(refreshResponse.refreshToken, forKey: KeychainHelper.refreshTokenKey)
-            return true
-        } catch {
+        guard let refreshToken = KeychainHelper.load(forKey: KeychainHelper.refreshTokenKey) else {
             return false
         }
+
+        let task = Task<Bool, Never> {
+            defer { self.refreshTask = nil }
+            do {
+                struct RefreshBody: Encodable { let refreshToken: String }
+                struct RefreshResponse: Decodable { let token: String; let refreshToken: String; let user: User }
+
+                let body = RefreshBody(refreshToken: refreshToken)
+                guard let url = URL(string: APIConfig.baseURL + "/auth/refresh") else { return false }
+
+                var req = URLRequest(url: url)
+                req.httpMethod = "POST"
+                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                req.httpBody = try self.encoder.encode(body)
+
+                let (data, response) = try await self.session.data(for: req)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { return false }
+
+                let refreshResponse = try self.decoder.decode(RefreshResponse.self, from: data)
+                KeychainHelper.save(refreshResponse.token, forKey: KeychainHelper.tokenKey)
+                KeychainHelper.save(refreshResponse.refreshToken, forKey: KeychainHelper.refreshTokenKey)
+                return true
+            } catch {
+                return false
+            }
+        }
+        refreshTask = task
+        return await task.value
     }
 
     // MARK: - Auth
@@ -190,6 +195,15 @@ actor APIService {
             name: name
         )
         return try await request(path: "/auth/apple", method: "POST", body: body, requiresAuth: false)
+    }
+
+    func googleSignIn(idToken: String) async throws -> AuthResponse {
+        return try await request(
+            path: "/auth/google",
+            method: "POST",
+            body: GoogleAuthRequest(idToken: idToken),
+            requiresAuth: false
+        )
     }
 
     func forgotPassword(email: String) async throws -> MessageResponse {

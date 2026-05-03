@@ -87,9 +87,28 @@ final class AuthViewModel: ObservableObject {
                 name: name
             )
             if let appleUserId = KeychainHelper.load(forKey: KeychainHelper.appleUserIdKey) {
-                // Already stored — keep it (re-sign-in)
                 _ = appleUserId
             }
+            persistSession(response)
+            isAuthenticated = true
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func signInWithGoogle() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            guard let (idToken, googleUserId) = try await GoogleSignInHelper.signIn() else {
+                return // User cancelled — no error
+            }
+            if !googleUserId.isEmpty {
+                KeychainHelper.save(googleUserId, forKey: KeychainHelper.googleUserIdKey)
+            }
+            let response = try await APIService.shared.googleSignIn(idToken: idToken)
             persistSession(response)
             isAuthenticated = true
         } catch {

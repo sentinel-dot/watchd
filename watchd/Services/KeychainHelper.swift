@@ -10,6 +10,7 @@ struct KeychainHelper {
     static let userNameKey = "user_name"
     static let userEmailKey = "user_email"
     static let appleUserIdKey = "apple_user_id"
+    static let googleUserIdKey = "google_user_id"
 
     @discardableResult
     static func save(_ value: String, forKey key: String) -> Bool {
@@ -55,6 +56,7 @@ struct KeychainHelper {
         delete(forKey: userNameKey)
         delete(forKey: userEmailKey)
         delete(forKey: appleUserIdKey)
+        delete(forKey: googleUserIdKey)
         delete(forKey: "is_guest")
     }
 }

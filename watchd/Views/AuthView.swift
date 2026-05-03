@@ -4,14 +4,12 @@ import AuthenticationServices
 struct AuthView: View {
     @Environment(\.theme) private var theme
     @State private var activeSheet: AuthSheet?
-    @State private var showGoogleUnavailable = false
 
     var body: some View {
         ZStack {
             theme.colors.base.ignoresSafeArea()
 
             AuthLanding(
-                onGoogleTap: { showGoogleUnavailable = true },
                 onRegisterTap: { activeSheet = .register },
                 onLoginTap: { activeSheet = .login }
             )
@@ -29,11 +27,6 @@ struct AuthView: View {
                 RegisterView()
             }
         }
-        .alert("Noch nicht verfügbar", isPresented: $showGoogleUnavailable) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Google Anmeldung wird in Phase 10 aktiviert.")
-        }
     }
 }
 
@@ -48,7 +41,6 @@ private enum AuthSheet: String, Identifiable {
 
 private struct AuthLanding: View {
     @Environment(\.theme) private var theme
-    let onGoogleTap: () -> Void
     let onRegisterTap: () -> Void
     let onLoginTap: () -> Void
 
@@ -86,7 +78,6 @@ private struct AuthLanding: View {
             Spacer(minLength: 56)
 
             AuthActionDock(
-                onGoogleTap: onGoogleTap,
                 onRegisterTap: onRegisterTap,
                 onLoginTap: onLoginTap
             )
@@ -138,13 +129,12 @@ private struct AuthActionDock: View {
     @EnvironmentObject private var authVM: AuthViewModel
     @State private var currentNonce: String?
 
-    let onGoogleTap: () -> Void
     let onRegisterTap: () -> Void
     let onLoginTap: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
-            // Sign in with Apple — native button styled to match the Velvet Hour dock
+            // Sign in with Apple
             SignInWithAppleButton(.continue) { request in
                 let rawNonce = AppleAuthHelper.randomNonceString()
                 currentNonce = rawNonce
@@ -158,14 +148,14 @@ private struct AuthActionDock: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .accessibilityLabel("Mit Apple fortfahren")
 
+            // Sign in with Google
             ProviderAuthButton(
                 title: "Mit Google fortfahren",
                 icon: .letter("G"),
                 style: .muted,
-                isEnabled: true,
-                action: onGoogleTap
+                isEnabled: !authVM.isLoading,
+                action: { Task { await authVM.signInWithGoogle() } }
             )
-            .accessibilityHint("Google Anmeldung wird in Phase 10 aktiviert.")
 
             Button(action: onRegisterTap) {
                 Text("Registrieren")

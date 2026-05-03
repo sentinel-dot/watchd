@@ -48,9 +48,9 @@ watchd/watchd/
 │                                # Font-Dateien, kein Crash — Fallback auf Systemfonts
 ├── Models/               # Codable structs (snake_case → camelCase via keyDecodingStrategy)
 │   ├── AuthModels.swift          # Auth requests/responses, User struct (isPasswordResettable:
-│   │                             # Bool — false für Apple-Only-Accounts, steuert „Passwort
+│   │                             # Bool — false für Apple-/Google-Only-Accounts, steuert „Passwort
 │   │                             # vergessen"-Sichtbarkeit). AppleAuthRequest: identityToken,
-│   │                             # nonce, authorizationCode, name
+│   │                             # nonce, authorizationCode, name. GoogleAuthRequest: idToken
 │   ├── MovieModels.swift         # Movie, StreamingOption, SwipeResponse/SwipeInfo, MatchInfo
 │   │                             # (SwipeRequest entfernt — APIService nutzt inline struct)
 │   ├── PartnershipModels.swift   # Partnership, PartnerUser, PartnershipFilters,
@@ -65,7 +65,8 @@ watchd/watchd/
 │                                 # SocketMatchEvent, FavoritesResponse
 ├── Services/
 │   ├── APIService.swift      # actor — thread-safe async/await URLSession; Auto-refresh bei 401
-│   │                         # isRefreshing-Flag verhindert parallele Refreshes; Timeout: 30s
+│   │                         # refreshTask: Task<Bool,Never>? coalesced parallele 401s:
+│   │                         # laufender Refresh wird abgewartet statt sofort false; Timeout: 30s
 │   │                         # URLError.cancelled + Task.isCancelled → CancellationError
 │   │                         # (sonst zeigt pull-to-refresh den „Abgebrochen"-Alert)
 │   │                         # urlCache = nil + requestCachePolicy =
@@ -76,7 +77,7 @@ watchd/watchd/
 │   │                         # Notification + Logout. Bei requiresAuth:false (login/register)
 │   │                         # fällt 401 durch zum Server-Fehlertext-Parsing — verhindert
 │   │                         # „Sitzung abgelaufen"-Meldung bei falschen Credentials.
-│   │                         # Auth: login, register, appleSignIn, forgotPassword, resetPassword
+│   │                         # Auth: login, register, appleSignIn, googleSignIn, forgotPassword, resetPassword
 │   │                         # Partnership-Methoden: fetchPartnerships,
 │   │                         # fetchPartnership, requestPartnership, acceptPartnership,
 │   │                         # declinePartnership, cancelPartnershipRequest,
@@ -89,9 +90,12 @@ watchd/watchd/
 │   ├── AppleAuthHelper.swift # Utility: randomNonceString() (SecRandomCopyBytes → URL-safe charset),
 │   │                         # sha256(_:) (CryptoKit SHA256 → hex). Nonce-Flow: raw nonce lokal
 │   │                         # speichern, SHA256(rawNonce) an Apple senden, rawNonce an Backend
+│   ├── GoogleSignInHelper.swift # GIDSignIn.sharedInstance.signIn(withPresenting:) → idToken +
+│   │                         # googleUserId; sofort signOut() nach Token-Extraktion (JWT-Sitzung,
+│   │                         # keine Google-Session nötig); .canceled → nil (kein Error)
 │   ├── KeychainHelper.swift  # JWT + User-Info Storage via Security framework
 │   │                         # Keys: jwt_token, jwt_refresh_token, user_id, user_name,
-│   │                         # user_email, apple_user_id
+│   │                         # user_email, apple_user_id, google_user_id
 │   ├── NetworkMonitor.swift  # @MainActor ObservableObject; NWPathMonitor → @Published isConnected
 │   └── SocketService.swift   # @MainActor Singleton.
 │                             # Connect-API: connect(token:partnershipId:) (partnershipId
@@ -107,7 +111,7 @@ watchd/watchd/
 │                             # Reconnect bei App-Foreground via SwipeViewModel.reconnectSocketIfNeeded()
 ├── ViewModels/
 │   ├── AuthViewModel.swift       # Singleton (AuthViewModel.shared); loadSession() aus Keychain;
-│   │                             # login, register, signInWithApple, updateName, logout, deleteAccount;
+│   │                             # login, register, signInWithApple, signInWithGoogle, updateName, logout, deleteAccount;
 │   │                             # requestPushPermissionIfNeeded();
 │   │                             # setupUnauthorizedListener() reagiert auf 401s.
 │   │                             # Socket-Lifecycle: connect() in loadSession() + persistSession();
@@ -145,7 +149,7 @@ watchd/watchd/
     │                              # (Zu zweit/Swipen/Match finden/Filmabend) in BluuNext 46pt.
     │                              # AuthActionDock: echter SignInWithAppleButton (Phase 9 aktiv,
     │                              # nonce-Flow via AppleAuthHelper, ASAuthorizationAppleIDCredential),
-    │                              # Google-Button zeigt „Noch nicht verfügbar"-Alert (Phase 10).
+    │                              # Google-Button ruft authVM.signInWithGoogle() (Phase 10 aktiv).
     │                              # Login/Register als Sheets ohne Nº-Labels und ohne Italic-Titel.
     │                              # AuthField: persistente Label-Zeile, Passwort-Placeholder
     │                              # „••••••••", E-Mail-Placeholder „deine@email.de", iOS-semantic
@@ -212,7 +216,7 @@ watchd/watchd/
 ```
 App Launch → ContentView
 ├── NICHT AUTH → AuthView
-│   ├── Premium Landing: natives Watchd-Logo oben (BluuNext) + rotierendes Hero-Wort + Apple Sign-In (aktiv) + Google-Dock (Phase 10)
+│   ├── Premium Landing: natives Watchd-Logo oben (BluuNext) + rotierendes Hero-Wort + Apple Sign-In (aktiv) + Google Sign-In (aktiv)
 │   ├── Anmelden-Sheet (email + password)
 │   ├── Registrieren-Sheet
 │   └── Passwort vergessen → Reset-Mail → deep link → ResetPasswordView
@@ -348,7 +352,7 @@ Aktueller Repo-Stand:
 
 | Status        | Thema                                                                                                                                                                                                  |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **in Arbeit** | Partnerships-Refactor: Rooms → persistente Partnerschaften, Gast-Zugang weg, Share-Codes mit Double-Opt-In, Apple Sign-In. Plan + Phasen im Parent-Repo `docs/partnerships-refactor-plan.md`. Branch: `refactor/partnerships`. **Phasen 5–9 fertig** (Phase 9 am 2026-05-03): Apple Sign-In implementiert — Backend: `POST /api/auth/apple` (JWT-Verify, 3-step find-or-create, Auth-Code-Exchange für apple_refresh_token, fire-and-forget Revocation bei delete-account); iOS: `AppleAuthHelper` (nonce + SHA256), `AppleAuthRequest`, `APIService.appleSignIn`, `AuthViewModel.signInWithApple`, echter `SignInWithAppleButton` in `AuthActionDock`. 127/127 Tests grün. Phase 10 (Google Sign-In) als nächstes. |
+| **in Arbeit** | Partnerships-Refactor: Rooms → persistente Partnerschaften, Gast-Zugang weg, Share-Codes mit Double-Opt-In, Apple Sign-In, Google Sign-In. Plan + Phasen im Parent-Repo `docs/partnerships-refactor-plan.md`. Branch: `refactor/partnerships`. **Phasen 5–10 fertig** (Phase 10 am 2026-05-03): Google Sign-In implementiert — Backend: `POST /api/auth/google` (google-auth-library OAuth2Client.verifyIdToken, 3-step find-or-create: google_id → email → create, lazy getter in config.ts, Rate-Limit); iOS: `GoogleSignInHelper` (GIDSignIn.sharedInstance.signIn, sofort signOut nach Token-Extraktion), `GoogleAuthRequest`, `APIService.googleSignIn`, `AuthViewModel.signInWithGoogle`, Google-Button in `AuthActionDock`. `APIConfig.googleClientId` gesetzt. 136/136 Tests grün. **Noch offen iOS**: GoogleSignIn SPM-Package in Xcode hinzufügen (`https://github.com/google/GoogleSignIn-iOS`) + reversed Client-ID URL-Scheme in Target → Info → URL Types (`com.googleusercontent.apps.600845465744-4cjhu5pv0fnslqfbmtjf8r4tcm54buki`). |
 
 ---
 

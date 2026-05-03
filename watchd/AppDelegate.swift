@@ -1,5 +1,6 @@
 import UIKit
 import UserNotifications
+import GoogleSignIn
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
@@ -25,6 +26,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         // Expected in Simulator — ignore silently
+    }
+
+    // Google Sign-In: handle the OAuth redirect URL when the Google app is installed
+    // and redirects back via custom URL scheme.
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        return GIDSignIn.sharedInstance.handle(url)
     }
 
     // Show notification banner even when app is in foreground

@@ -16,4 +16,10 @@ enum APIConfig {
     static var iconsBaseURL: String { backendBaseURL }
     /// w780 = 780px – schärfer auf Retina (Detail/ große Karten). TMDB: w92, w154, w185, w342, w500, w780, original
     static let tmdbImageBase = "https://image.tmdb.org/t/p/w780"
+
+    // Google Sign-In iOS OAuth 2.0 Client ID.
+    // Obtain from: console.cloud.google.com → APIs & Services → Credentials
+    // → Create credentials → OAuth 2.0 Client ID → iOS.
+    // Replace the placeholder with your real client ID before shipping.
+    static let googleClientId = "600845465744-4cjhu5pv0fnslqfbmtjf8r4tcm54buki.apps.googleusercontent.com"
 }
