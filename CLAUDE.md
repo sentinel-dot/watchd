@@ -47,7 +47,10 @@ watchd/watchd/
 │                                # nur BluuNext + Manrope (6 Dateien); loggt fehlende
 │                                # Font-Dateien, kein Crash — Fallback auf Systemfonts
 ├── Models/               # Codable structs (snake_case → camelCase via keyDecodingStrategy)
-│   ├── AuthModels.swift          # Auth requests/responses, User struct (ohne isGuest)
+│   ├── AuthModels.swift          # Auth requests/responses, User struct (isPasswordResettable:
+│   │                             # Bool — false für Apple-Only-Accounts, steuert „Passwort
+│   │                             # vergessen"-Sichtbarkeit). AppleAuthRequest: identityToken,
+│   │                             # nonce, authorizationCode, name
 │   ├── MovieModels.swift         # Movie, StreamingOption, SwipeResponse/SwipeInfo, MatchInfo
 │   │                             # (SwipeRequest entfernt — APIService nutzt inline struct)
 │   ├── PartnershipModels.swift   # Partnership, PartnerUser, PartnershipFilters,
@@ -73,6 +76,7 @@ watchd/watchd/
 │   │                         # Notification + Logout. Bei requiresAuth:false (login/register)
 │   │                         # fällt 401 durch zum Server-Fehlertext-Parsing — verhindert
 │   │                         # „Sitzung abgelaufen"-Meldung bei falschen Credentials.
+│   │                         # Auth: login, register, appleSignIn, forgotPassword, resetPassword
 │   │                         # Partnership-Methoden: fetchPartnerships,
 │   │                         # fetchPartnership, requestPartnership, acceptPartnership,
 │   │                         # declinePartnership, cancelPartnershipRequest,
@@ -82,7 +86,12 @@ watchd/watchd/
 │   │                         # swipeForPartnership, fetchMatchesForPartnership.
 │   │                         # Alte Room-Methoden komplett entfernt (Phase 7).
 │   │                         # guestLogin / upgradeAccount in Phase 6 entfernt
+│   ├── AppleAuthHelper.swift # Utility: randomNonceString() (SecRandomCopyBytes → URL-safe charset),
+│   │                         # sha256(_:) (CryptoKit SHA256 → hex). Nonce-Flow: raw nonce lokal
+│   │                         # speichern, SHA256(rawNonce) an Apple senden, rawNonce an Backend
 │   ├── KeychainHelper.swift  # JWT + User-Info Storage via Security framework
+│   │                         # Keys: jwt_token, jwt_refresh_token, user_id, user_name,
+│   │                         # user_email, apple_user_id
 │   ├── NetworkMonitor.swift  # @MainActor ObservableObject; NWPathMonitor → @Published isConnected
 │   └── SocketService.swift   # @MainActor Singleton.
 │                             # Connect-API: connect(token:partnershipId:) (partnershipId
@@ -98,7 +107,7 @@ watchd/watchd/
 │                             # Reconnect bei App-Foreground via SwipeViewModel.reconnectSocketIfNeeded()
 ├── ViewModels/
 │   ├── AuthViewModel.swift       # Singleton (AuthViewModel.shared); loadSession() aus Keychain;
-│   │                             # login, register, updateName, logout, deleteAccount;
+│   │                             # login, register, signInWithApple, updateName, logout, deleteAccount;
 │   │                             # requestPushPermissionIfNeeded();
 │   │                             # setupUnauthorizedListener() reagiert auf 401s.
 │   │                             # Socket-Lifecycle: connect() in loadSession() + persistSession();
@@ -133,12 +142,13 @@ watchd/watchd/
     ├── AuthView.swift             # Premium Auth-Landing im Velvet-Hour-Stil. Oben: natives
     │                              # SwiftUI-Logo (BluuNext Bold „W" weiß + „atchd" Accent,
     │                              # 76/50pt, kein PNG). Darunter: rotierendes Hero-Wort
-    │                              # (Zu zweit/Swipen/Match finden/Filmabend — „Watchd" entfernt)
-    │                              # in BluuNext non-italic 46pt. Apple-/Google-Dock Phase 9/10
-    │                              # mit „Noch nicht implementiert"-Alert. Login/Register als
-    │                              # Sheets ohne Nº-Labels und ohne Italic-Titel. AuthField:
-    │                              # persistente Label-Zeile, Passwort-Placeholder „••••••••",
-    │                              # E-Mail-Placeholder „deine@email.de", iOS-semantic
+    │                              # (Zu zweit/Swipen/Match finden/Filmabend) in BluuNext 46pt.
+    │                              # AuthActionDock: echter SignInWithAppleButton (Phase 9 aktiv,
+    │                              # nonce-Flow via AppleAuthHelper, ASAuthorizationAppleIDCredential),
+    │                              # Google-Button zeigt „Noch nicht verfügbar"-Alert (Phase 10).
+    │                              # Login/Register als Sheets ohne Nº-Labels und ohne Italic-Titel.
+    │                              # AuthField: persistente Label-Zeile, Passwort-Placeholder
+    │                              # „••••••••", E-Mail-Placeholder „deine@email.de", iOS-semantic
     │                              # textContentTypes, Accessibility-Hints.
     │                              # LoginSheetView + RegisterView: .onAppear löscht
     │                              # authVM.errorMessage — verhindert Fehler-Bleeding zwischen
@@ -202,7 +212,7 @@ watchd/watchd/
 ```
 App Launch → ContentView
 ├── NICHT AUTH → AuthView
-│   ├── Premium Landing: natives Watchd-Logo oben (BluuNext) + rotierendes Hero-Wort + Apple/Google-Dock (Phase 9/10 vorbereitet)
+│   ├── Premium Landing: natives Watchd-Logo oben (BluuNext) + rotierendes Hero-Wort + Apple Sign-In (aktiv) + Google-Dock (Phase 10)
 │   ├── Anmelden-Sheet (email + password)
 │   ├── Registrieren-Sheet
 │   └── Passwort vergessen → Reset-Mail → deep link → ResetPasswordView
@@ -338,7 +348,7 @@ Aktueller Repo-Stand:
 
 | Status        | Thema                                                                                                                                                                                                  |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **in Arbeit** | Partnerships-Refactor: Rooms → persistente Partnerschaften, Gast-Zugang weg, Share-Codes mit Double-Opt-In, Apple Sign-In. Plan + Phasen im Parent-Repo `docs/partnerships-refactor-plan.md`. Branch: `refactor/partnerships`. **Phasen 5–8 fertig** (Phase 8 am 2026-04-30): iOS-UI und Deep-Link/Push-Routing sind auf Partnership-Welt umgestellt. Phase 7 (Views): `PartnersView` (Section-List Eingehend/Partner/Ausstehend) ersetzt `RoomsView`; neue `AddPartnerSheet`, `PartnerFiltersView`, Overflow-Views `PendingRequestsView` / `OutgoingRequestsView` / `AllPartnersView`. Phase 8: `watchd://add/CODE` und Universal Link `/add/:code` öffnen `AddPartnerSheet` mit Prefill oder werden bis nach Login gequeued; Push-Taps für `partnership_request` öffnen/markieren den Partner-Tab, `partnership_accepted` und `match` öffnen die betroffene Partnerschaft. `AuthView`: Guest-Button raus; seit 2026-04-28 Premium-Startscreen mit rotierendem Hero-Wort, Apple-/Google-Dock als Phase-9/10-Provider-Skeletons mit "Noch nicht implementiert"-Alert. **Cleanup**: 6 Legacy-Views gelöscht (RoomsView, RoomFiltersView, CreateRoomSheet, ArchivedRoomsView, GuestUpgradePromptSheet, UpgradeAccountView), `RoomModels.swift` weg, alte Room-Methoden aus `APIService` raus. Phase 9 (Apple Sign-In) als nächstes. |
+| **in Arbeit** | Partnerships-Refactor: Rooms → persistente Partnerschaften, Gast-Zugang weg, Share-Codes mit Double-Opt-In, Apple Sign-In. Plan + Phasen im Parent-Repo `docs/partnerships-refactor-plan.md`. Branch: `refactor/partnerships`. **Phasen 5–9 fertig** (Phase 9 am 2026-05-03): Apple Sign-In implementiert — Backend: `POST /api/auth/apple` (JWT-Verify, 3-step find-or-create, Auth-Code-Exchange für apple_refresh_token, fire-and-forget Revocation bei delete-account); iOS: `AppleAuthHelper` (nonce + SHA256), `AppleAuthRequest`, `APIService.appleSignIn`, `AuthViewModel.signInWithApple`, echter `SignInWithAppleButton` in `AuthActionDock`. 127/127 Tests grün. Phase 10 (Google Sign-In) als nächstes. |
 
 ---
 

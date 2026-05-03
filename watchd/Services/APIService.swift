@@ -177,6 +177,21 @@ actor APIService {
         return try await request(path: "/auth/login", method: "POST", body: body, requiresAuth: false)
     }
 
+    func appleSignIn(
+        identityToken: String,
+        nonce: String,
+        authorizationCode: String,
+        name: String?
+    ) async throws -> AuthResponse {
+        let body = AppleAuthRequest(
+            identityToken: identityToken,
+            nonce: nonce,
+            authorizationCode: authorizationCode,
+            name: name
+        )
+        return try await request(path: "/auth/apple", method: "POST", body: body, requiresAuth: false)
+    }
+
     func forgotPassword(email: String) async throws -> MessageResponse {
         let body = ForgotPasswordRequest(email: email)
         return try await request(path: "/auth/forgot-password", method: "POST", body: body, requiresAuth: false)

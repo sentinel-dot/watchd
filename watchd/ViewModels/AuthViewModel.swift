@@ -69,6 +69,34 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    func signInWithApple(
+        identityToken: String,
+        nonce: String,
+        authorizationCode: String,
+        name: String?
+    ) async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let response = try await APIService.shared.appleSignIn(
+                identityToken: identityToken,
+                nonce: nonce,
+                authorizationCode: authorizationCode,
+                name: name
+            )
+            if let appleUserId = KeychainHelper.load(forKey: KeychainHelper.appleUserIdKey) {
+                // Already stored — keep it (re-sign-in)
+                _ = appleUserId
+            }
+            persistSession(response)
+            isAuthenticated = true
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func updateName(_ newName: String) async {
         isLoading = true
         errorMessage = nil

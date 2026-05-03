@@ -1,17 +1,17 @@
 import SwiftUI
+import AuthenticationServices
 
 struct AuthView: View {
     @Environment(\.theme) private var theme
     @State private var activeSheet: AuthSheet?
-    @State private var unavailableProvider: AuthProvider?
+    @State private var showGoogleUnavailable = false
 
     var body: some View {
         ZStack {
             theme.colors.base.ignoresSafeArea()
 
             AuthLanding(
-                onAppleTap: { unavailableProvider = .apple },
-                onGoogleTap: { unavailableProvider = .google },
+                onGoogleTap: { showGoogleUnavailable = true },
                 onRegisterTap: { activeSheet = .register },
                 onLoginTap: { activeSheet = .login }
             )
@@ -29,12 +29,10 @@ struct AuthView: View {
                 RegisterView()
             }
         }
-        .alert(item: $unavailableProvider) { provider in
-            Alert(
-                title: Text("Noch nicht implementiert"),
-                message: Text("\(provider.title) wird in \(provider.phase) aktiviert."),
-                dismissButton: .default(Text("OK"))
-            )
+        .alert("Noch nicht verfügbar", isPresented: $showGoogleUnavailable) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Google Anmeldung wird in Phase 10 aktiviert.")
         }
     }
 }
@@ -46,36 +44,10 @@ private enum AuthSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
-private enum AuthProvider: String, Identifiable {
-    case apple
-    case google
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .apple:
-            return "Apple Anmeldung"
-        case .google:
-            return "Google Anmeldung"
-        }
-    }
-
-    var phase: String {
-        switch self {
-        case .apple:
-            return "Phase 9"
-        case .google:
-            return "Phase 10"
-        }
-    }
-}
-
 // MARK: - Landing
 
 private struct AuthLanding: View {
     @Environment(\.theme) private var theme
-    let onAppleTap: () -> Void
     let onGoogleTap: () -> Void
     let onRegisterTap: () -> Void
     let onLoginTap: () -> Void
@@ -114,7 +86,6 @@ private struct AuthLanding: View {
             Spacer(minLength: 56)
 
             AuthActionDock(
-                onAppleTap: onAppleTap,
                 onGoogleTap: onGoogleTap,
                 onRegisterTap: onRegisterTap,
                 onLoginTap: onLoginTap
@@ -164,21 +135,28 @@ private struct RotatingHeroWord: View {
 
 private struct AuthActionDock: View {
     @Environment(\.theme) private var theme
-    let onAppleTap: () -> Void
+    @EnvironmentObject private var authVM: AuthViewModel
+    @State private var currentNonce: String?
+
     let onGoogleTap: () -> Void
     let onRegisterTap: () -> Void
     let onLoginTap: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
-            ProviderAuthButton(
-                title: "Mit Apple fortfahren",
-                icon: .system("apple.logo"),
-                style: .filled,
-                isEnabled: true,
-                action: onAppleTap
-            )
-            .accessibilityHint("Zeigt einen Hinweis, dass Apple Anmeldung in Phase 9 aktiviert wird.")
+            // Sign in with Apple — native button styled to match the Velvet Hour dock
+            SignInWithAppleButton(.continue) { request in
+                let rawNonce = AppleAuthHelper.randomNonceString()
+                currentNonce = rawNonce
+                request.requestedScopes = [.fullName, .email]
+                request.nonce = AppleAuthHelper.sha256(rawNonce)
+            } onCompletion: { result in
+                Task { await handleAppleResult(result) }
+            }
+            .frame(height: 52)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .accessibilityLabel("Mit Apple fortfahren")
 
             ProviderAuthButton(
                 title: "Mit Google fortfahren",
@@ -187,7 +165,7 @@ private struct AuthActionDock: View {
                 isEnabled: true,
                 action: onGoogleTap
             )
-            .accessibilityHint("Zeigt einen Hinweis, dass Google Anmeldung in Phase 10 aktiviert wird.")
+            .accessibilityHint("Google Anmeldung wird in Phase 10 aktiviert.")
 
             Button(action: onRegisterTap) {
                 Text("Registrieren")
@@ -211,6 +189,15 @@ private struct AuthActionDock: View {
                     )
             }
             .padding(.top, 4)
+
+            if let msg = authVM.errorMessage {
+                Text(msg)
+                    .font(theme.fonts.caption)
+                    .foregroundColor(theme.colors.error)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity)
+            }
         }
         .padding(.horizontal, 24)
         .padding(.top, 28)
@@ -225,6 +212,45 @@ private struct AuthActionDock: View {
                 )
                 .ignoresSafeArea(edges: .bottom)
         )
+    }
+
+    private func handleAppleResult(_ result: Result<ASAuthorization, Error>) async {
+        switch result {
+        case .success(let auth):
+            guard
+                let credential = auth.credential as? ASAuthorizationAppleIDCredential,
+                let tokenData = credential.identityToken,
+                let identityToken = String(data: tokenData, encoding: .utf8),
+                let codeData = credential.authorizationCode,
+                let authorizationCode = String(data: codeData, encoding: .utf8),
+                let rawNonce = currentNonce
+            else {
+                authVM.errorMessage = "Apple-Anmeldung fehlgeschlagen. Bitte versuche es erneut."
+                return
+            }
+
+            let fullName = credential.fullName
+            let name = [fullName?.givenName, fullName?.familyName]
+                .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+
+            // Store the stable Apple user ID for credential-state checks
+            KeychainHelper.save(credential.user, forKey: KeychainHelper.appleUserIdKey)
+
+            await authVM.signInWithApple(
+                identityToken: identityToken,
+                nonce: rawNonce,
+                authorizationCode: authorizationCode,
+                name: name.isEmpty ? nil : name
+            )
+
+        case .failure(let error):
+            if let asError = error as? ASAuthorizationError, asError.code == .canceled {
+                return
+            }
+            authVM.errorMessage = "Apple-Anmeldung fehlgeschlagen. Bitte versuche es erneut."
+        }
     }
 }
 

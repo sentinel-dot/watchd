@@ -30,15 +30,24 @@ struct AuthResponse: Decodable {
     let user: User
 }
 
+struct AppleAuthRequest: Encodable {
+    let identityToken: String
+    let nonce: String
+    let authorizationCode: String
+    let name: String?
+}
+
 struct User: Decodable, Identifiable {
     let id: Int
     let name: String
     let email: String?
+    let isPasswordResettable: Bool
 
-    init(id: Int, name: String, email: String?) {
+    init(id: Int, name: String, email: String?, isPasswordResettable: Bool = true) {
         self.id = id
         self.name = name
         self.email = email
+        self.isPasswordResettable = isPasswordResettable
     }
 }
 
