@@ -303,13 +303,15 @@ Kanonische Runbooks:
 
 Aktueller Repo-Stand:
 
-- `watchd/watchd/watchd.entitlements` enthält `aps-environment = development`
+- `watchd/watchd/watchd.entitlements` enthält `aps-environment = production` (TestFlight/App-Store-Default; für lokales Debug-Push-Testing temporär auf `development` umstellen)
 - `watchd.xcodeproj` nutzt `DEVELOPMENT_TEAM = RNK5A8AP8B`
 - Bundle ID ist `com.milinkovic.watchd`
 
 ## Signing & Provisioning
 
-- Signing läuft aktuell über `Automatically manage signing`
+- Lokale Xcode-Debug-Builds laufen über `Automatically manage signing`
+- Distribution-Builds (TestFlight/App Store) laufen über die GitHub-Action `.github/workflows/ios-release.yml` mit Manual Signing (`Apple Distribution`-Cert + Provisioning-Profile aus GitHub-Secrets, Upload via `altool`)
+- Lokale Archives schlagen fehl bzw. liefern Development-Signing wenn `Apple Distribution`-Cert nicht im Keychain ist
 - Provisioning- und Team-Wechsel sind in `docs/signing-provisioning.md` dokumentiert
 - Bei Bundle-ID- oder Team-Wechsel immer danach `docs/apns-end-to-end-setup.md` erneut gegenprüfen
 
