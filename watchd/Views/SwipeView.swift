@@ -96,9 +96,9 @@ struct SwipeView: View {
             Text("Diese Partnerschaft wurde beendet.")
         }
         .task {
+            viewModel.startSocket()
             await viewModel.fetchFeed()
             await favoritesVM.loadFavorites()
-            viewModel.startSocket()
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {

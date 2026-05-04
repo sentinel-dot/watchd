@@ -250,7 +250,25 @@ struct ProfileView: View {
                 Label("Konto löschen", systemImage: "trash")
             }
             .listRowBackground(theme.colors.surfaceCard)
+        } footer: {
+            HStack {
+                Spacer()
+                Text(appVersionLabel)
+                    .font(theme.fonts.microCaption)
+                    .tracking(1.0)
+                    .textCase(.uppercase)
+                    .foregroundColor(theme.colors.textTertiary)
+                Spacer()
+            }
+            .padding(.top, 24)
         }
+    }
+
+    private var appVersionLabel: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = info?["CFBundleVersion"] as? String ?? "—"
+        return "Watchd \(version) (\(build))"
     }
 
     // MARK: - Share-Code Loading

@@ -136,7 +136,7 @@ final class SwipeViewModel: ObservableObject {
         let swipeStarted = Date()
 
         do {
-            _ = try await APIService.shared.swipeForPartnership(
+            let response = try await APIService.shared.swipeForPartnership(
                 movieId: swipedId,
                 partnershipId: partnership.id,
                 direction: direction
@@ -150,6 +150,15 @@ final class SwipeViewModel: ObservableObject {
             movies.removeFirst()
             dragOffset = .zero
             swipeCount += 1
+
+            if let match = response.match, match.isMatch, currentMatch == nil {
+                currentMatch = SocketMatchEvent(
+                    movieId: match.movieId ?? swipedId,
+                    movieTitle: match.movieTitle ?? "",
+                    posterPath: match.posterPath,
+                    streamingOptions: match.streamingOptions ?? []
+                )
+            }
 
             if movies.count <= 5 {
                 Task { await fetchNextPage() }
