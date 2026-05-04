@@ -44,7 +44,8 @@ jobs:
             -destination generic/platform=iOS \
             -archivePath $RUNNER_TEMP/watchd.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM=RNK5A8AP8B
 
       - name: Export IPA
         run: |
