@@ -12,18 +12,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Apple Distribution Certificate
-        env:
-          P12_BASE64: ${{ secrets.DISTRIBUTION_CERT_P12 }}
-          P12_PASSWORD: ${{ secrets.DISTRIBUTION_CERT_PASSWORD }}
-        run: |
-          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
-          echo "$P12_BASE64" | base64 --decode -o $RUNNER_TEMP/cert.p12
-          security create-keychain -p "" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "" $KEYCHAIN_PATH
-          security import $RUNNER_TEMP/cert.p12 -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -A -f pkcs12
-          security list-keychain -d user -s $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -s -k "" $KEYCHAIN_PATH
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.DISTRIBUTION_CERT_P12 }}
+          p12-password: ${{ secrets.DISTRIBUTION_CERT_PASSWORD }}
 
       - name: Install Provisioning Profile
         env:
@@ -54,8 +46,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             PROVISIONING_PROFILE_SPECIFIER="watchd AppStore" \
-            DEVELOPMENT_TEAM=RNK5A8AP8B \
-            OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/build.keychain"
+            DEVELOPMENT_TEAM=RNK5A8AP8B
 
       - name: Export IPA
         run: |
