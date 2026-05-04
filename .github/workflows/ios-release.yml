@@ -82,6 +82,16 @@ jobs:
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
             -exportPath $RUNNER_TEMP/export
 
+      - name: Verify IPA Entitlements
+        run: |
+          mkdir -p $RUNNER_TEMP/inspect
+          unzip -q $RUNNER_TEMP/export/watchd.ipa -d $RUNNER_TEMP/inspect
+          echo "=== Entitlements of signed binary ==="
+          codesign -d --entitlements - $RUNNER_TEMP/inspect/Payload/watchd.app 2>&1 || true
+          echo "=== Embedded provisioning profile entitlements ==="
+          security cms -D -i $RUNNER_TEMP/inspect/Payload/watchd.app/embedded.mobileprovision \
+            | plutil -extract Entitlements xml1 -o - - || true
+
       - name: Upload to App Store Connect
         env:
           ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
