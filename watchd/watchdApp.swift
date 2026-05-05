@@ -8,6 +8,7 @@ struct watchdApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authViewModel = AuthViewModel.shared
     @StateObject private var networkMonitor = NetworkMonitor()
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         FontRegistry.registerAll()
@@ -31,6 +32,15 @@ struct watchdApp: App {
                     guard let url = activity.webpageURL else { return }
                     handleUniversalLink(url)
                 }
+        }
+        // scenePhase becomes .active before onContinueUserActivity delivers the URL,
+        // so we wait 0.6s to ensure queueAddPartnerCode has already run.
+        // consumePendingNavigation is idempotent — safe to call on every foreground transition.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, authViewModel.isAuthenticated else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                AppNavigation.consumePendingNavigation()
+            }
         }
     }
 
@@ -88,9 +98,8 @@ struct watchdApp: App {
         AppNavigation.queueAddPartnerCode(code)
 
         if authViewModel.isAuthenticated {
-            // Delay gives SwiftUI time to reattach observers after the app returns from background.
-            // consumePendingNavigation is idempotent — safe to call even if onAppear already consumed it.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            // Covers the case where the app is already in the foreground (scenePhase won't change).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 AppNavigation.consumePendingNavigation()
             }
         }
