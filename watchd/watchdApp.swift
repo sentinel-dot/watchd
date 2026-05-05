@@ -85,11 +85,14 @@ struct watchdApp: App {
     private func handleAddPartnerCode(_ rawCode: String) {
         guard let code = AppNavigation.normalizedShareCode(from: rawCode) else { return }
 
+        AppNavigation.queueAddPartnerCode(code)
+
         if authViewModel.isAuthenticated {
-            AppNavigation.openPartnersTab()
-            AppNavigation.openAddPartner(rawCode: code)
-        } else {
-            AppNavigation.queueAddPartnerCode(code)
+            // Delay gives SwiftUI time to reattach observers after the app returns from background.
+            // consumePendingNavigation is idempotent — safe to call even if onAppear already consumed it.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                AppNavigation.consumePendingNavigation()
+            }
         }
     }
 
