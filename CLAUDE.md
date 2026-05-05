@@ -126,7 +126,9 @@ watchd/watchd/
 │   ├── AddPartnerViewModel.swift # Code-Eingabe-Sheet: codeInput normalisiert (uppercase,
 │   │                             # Crockford-Base32 strip, max 8 Zeichen) via
 │   │                             # AddPartnerViewModel.normalize(...); submit(onSuccess:) ruft
-│   │                             # requestPartnership und liefert die neue Partnership zurück
+│   │                             # requestPartnership und liefert die neue Partnership zurück.
+│   │                             # startTypewriterAnimation(): tippt pendingCode (aus Deep Link)
+│   │                             # Zeichen für Zeichen ein; fillCodeImmediately() für Reduce Motion
 │   ├── SwipeViewModel.swift      # init(partnership:), fetchFeed(afterPosition) — paginiert
 │   │                             # (20/page), lazy load bei ≤5; handleDrag + commitSwipe —
 │   │                             # 100pt Threshold, 0.25s fly-out;
@@ -170,7 +172,9 @@ watchd/watchd/
     │                              # Partner entfernen) + Confirm-Alert
     ├── AddPartnerSheet.swift      # Code-Eingabe-Sheet: NativeTextField mit AddPartnerVM-
     │                              # Normalisierung (uppercase + Crockford-Filter + 8-char-Trim),
-    │                              # primary „Anfrage senden" — disabled bis Code 8 Zeichen
+    │                              # primary „Anfrage senden" — disabled bis Code 8 Zeichen.
+    │                              # Deep-Link-Code: Typewriter-Animation (70ms/Zeichen,
+    │                              # 200ms Delay); Reduce-Motion-Gate via @Environment
     ├── PartnerFiltersView.swift   # Filter-Editor (Genres, Jahre, Streaming, Rating, Laufzeit).
     │                              # Toolbar-Title = Partner-Name. Enthält
     │                              # PartnershipFilterOptionsView, GenreOption, StreamingService.
@@ -180,9 +184,10 @@ watchd/watchd/
     ├── AllPartnersView.swift      # Overflow: alle aktiven Partner (Tap → SwipeView,
     │                              # contextMenu + swipeActions analog PartnersView)
     ├── ProfileView.swift          # Profil-Tab (List-basiert): Konto (Name, Email),
-    │                              # Dein Code (Mono-Display, Copy-Button, Code-erneuern mit
-    │                              # Confirm-Alert), Rechtliches, Abmelden, Konto löschen.
-    │                              # Kein Archiv mehr, kein Guest-Upgrade mehr
+    │                              # Dein Code (Mono-Display, Share-Button + Copy-Button,
+    │                              # Code-erneuern mit Confirm-Alert) — ShareLink teilt
+    │                              # https://watchd.up.railway.app/add/CODE,
+    │                              # Rechtliches, Abmelden, Konto löschen.
     ├── SwipeView.swift            # init(partnership:). Karten-Stack mit Drag-Gesture,
     │                              # Match-Modal-Trigger. Toolbar: Partner-Name + „zu zweit"-
     │                              # caps-Label. Drei Action-Buttons (Skip/Merken/Gefällt).

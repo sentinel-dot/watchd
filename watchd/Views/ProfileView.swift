@@ -148,15 +148,25 @@ struct ProfileView: View {
 
                     Spacer()
 
-                    Button {
-                        copyCode()
-                    } label: {
-                        Image(systemName: "doc.on.doc")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(theme.colors.accent)
+                    HStack(spacing: 16) {
+                        ShareLink(item: "Füge mich auf Watchd hinzu — mein Code: \(code)\nhttps://watchd.up.railway.app/add/\(code)") {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(theme.colors.accent)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Code teilen")
+
+                        Button {
+                            copyCode()
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(theme.colors.accent)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Code kopieren")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Code kopieren")
                 } else if let err = codeError {
                     Text(err)
                         .font(theme.fonts.caption)

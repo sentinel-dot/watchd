@@ -3,20 +3,21 @@
 ## Schema
 
 ```
-MAJOR.MINOR (z. B. 1.3)
+MAJOR.MINOR.PATCH (z. B. 1.1.0)
 ```
 
 - **MAJOR** — Breaking Change oder kompletter Relaunch (selten)
 - **MINOR** — neues Feature, größere UI-Änderung, sichtbarer Fortschritt für Tester
-
-Kein PATCH: Bugfixes und kleine Tweaks kommen als nächste MINOR-Version raus.
-Der Build-Number ist technisch und steigt bei jedem Upload, egal wie klein.
+- **PATCH** — Bugfix, Crash-Fix, stille Korrektur ohne neuen Scope
 
 Beispiele:
-- 1.0 → erster TestFlight-Build
-- 1.1 → erste echte Änderung (Bugfix, Polishing, neue Kleinigkeit)
-- 1.2 → nächstes Feature
-- 2.0 → wenn die App wirklich eine andere ist
+- 1.0.0 → erster TestFlight-Build
+- 1.1.0 → neues Feature (z. B. Share-Code-Flow)
+- 1.1.1 → Bugfix auf Feature-Stand 1.1
+- 1.2.0 → nächstes Feature
+- 2.0.0 → wenn die App wirklich eine andere ist
+
+Der Build-Number ist technisch und steigt bei jedem Upload, egal wie klein.
 
 ---
 
@@ -26,7 +27,7 @@ Beide Werte sitzen in Xcode unter Target → General:
 
 | Feld | Xcode-Name | Beispiel |
 |---|---|---|
-| Version | MARKETING_VERSION | 1.1 |
+| Version | MARKETING_VERSION | 1.1.0 |
 | Build | CURRENT_PROJECT_VERSION | 7 |
 
 Oder direkt in der `project.pbxproj` — aber Xcode-UI ist einfacher.
@@ -53,10 +54,9 @@ Oder direkt in der `project.pbxproj` — aber Xcode-UI ist einfacher.
 TestFlight zeigt Testern pro Build einen optionalen Text. Kurz halten, Deutsch:
 
 ```
-1.1 (Build 3)
-– Match-View: Push kommt jetzt auch wenn App im Hintergrund
-– Profil: Name lässt sich wieder ändern
-– Kleinere Bugfixes
+1.1.0 (Build 5)
+– Profil: Code teilen via Share-Sheet (Link öffnet App direkt)
+– Partner hinzufügen: Code tippt sich bei geteiltem Link automatisch ein
 ```
 
 Kein Marketing-Blabla. Konkret was neu oder gefixt ist, damit Tester gezielt testen können.
@@ -79,7 +79,7 @@ Für die ersten Releases: intern reicht. Extern erst wenn der Kreis größer wir
 ## Checkliste vor jedem Upload
 
 - [ ] Build-Number hochgezählt (nie wiederholen)
-- [ ] Version hochgezählt falls sinnvoll
+- [ ] Version hochgezählt falls sinnvoll (MINOR für Features, PATCH für Fixes)
 - [ ] Railway `APNS_PRODUCTION=true`
 - [ ] App einmal auf echtem Gerät laufen lassen
 - [ ] Archive und Upload erfolgreich

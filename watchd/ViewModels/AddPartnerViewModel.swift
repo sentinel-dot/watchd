@@ -8,9 +8,26 @@ final class AddPartnerViewModel: ObservableObject {
 
     static let codeLength = 8
     private static let allowedAlphabet = Set("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
+    private let pendingCode: String
 
     init(initialCode: String = "") {
-        codeInput = Self.normalize(initialCode)
+        pendingCode = Self.normalize(initialCode)
+        codeInput = ""
+    }
+
+    func startTypewriterAnimation() async {
+        guard !pendingCode.isEmpty else { return }
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        for char in pendingCode {
+            guard !Task.isCancelled else { return }
+            codeInput += String(char)
+            try? await Task.sleep(nanoseconds: 70_000_000)
+        }
+    }
+
+    func fillCodeImmediately() {
+        guard !pendingCode.isEmpty else { return }
+        codeInput = pendingCode
     }
 
     static func normalize(_ raw: String) -> String {

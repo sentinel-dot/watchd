@@ -3,6 +3,7 @@ import SwiftUI
 struct AddPartnerSheet: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var viewModel: AddPartnerViewModel
     @FocusState private var focused: Bool
 
@@ -61,6 +62,11 @@ struct AddPartnerSheet: View {
             .onAppear {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     focused = true
+                }
+                if reduceMotion {
+                    viewModel.fillCodeImmediately()
+                } else {
+                    Task { await viewModel.startTypewriterAnimation() }
                 }
             }
         }
