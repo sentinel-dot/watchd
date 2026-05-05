@@ -48,6 +48,9 @@ struct MainTabView: View {
         .onChange(of: selectedTab) { _, tab in
             if tab == .partners {
                 partnerTabNeedsAttention = false
+                // Partners tab just became active — consume any queued deep-link navigation.
+                // This fires after the tab switch is complete, so PartnersView is ready.
+                AppNavigation.consumePendingNavigation()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchdOpenPartnersTab)) { notification in
@@ -55,6 +58,10 @@ struct MainTabView: View {
             let wasShowingPartners = selectedTab == .partners
             selectedTab = .partners
             partnerTabNeedsAttention = shouldMark && !wasShowingPartners
+            if wasShowingPartners {
+                // Tab didn't change, so onChange won't fire — consume directly.
+                AppNavigation.consumePendingNavigation()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchdPartnersTabNeedsAttention)) { _ in
             if selectedTab != .partners {

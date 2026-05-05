@@ -34,6 +34,42 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         return GIDSignIn.sharedInstance.handle(url)
     }
 
+    // Universal Links (https://watchd.up.railway.app/...).
+    // Handled here instead of SwiftUI's onContinueUserActivity — AppDelegate is more reliable
+    // and mirrors the push-notification routing pattern that already works.
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+              let url = userActivity.webpageURL else { return false }
+
+        Task { @MainActor in
+            let parts = url.pathComponents.filter { $0 != "/" }
+
+            if parts.first == "add", let rawCode = parts.dropFirst().first, !rawCode.isEmpty {
+                guard AuthViewModel.shared.isAuthenticated else {
+                    AppNavigation.queueAddPartnerCode(rawCode)
+                    return
+                }
+                // Queue first, then switch tab — MainTabView.onChange consumes the queue
+                // once the Partners tab is active, avoiding any tab-animation timing issues.
+                AppNavigation.queueAddPartnerCode(rawCode)
+                AppNavigation.openPartnersTab()
+                return
+            }
+
+            if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+               components.path == "/reset-password",
+               let token = components.queryItems?.first(where: { $0.name == "token" })?.value,
+               !token.isEmpty {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("showResetPassword"),
+                    object: nil,
+                    userInfo: ["token": token]
+                )
+            }
+        }
+        return true
+    }
+
     // Show notification banner even when app is in foreground
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,

@@ -8,7 +8,6 @@ struct watchdApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authViewModel = AuthViewModel.shared
     @StateObject private var networkMonitor = NetworkMonitor()
-    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         FontRegistry.registerAll()
@@ -28,19 +27,6 @@ struct watchdApp: App {
                     if GIDSignIn.sharedInstance.handle(url) { return }
                     handleDeepLink(url)
                 }
-                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-                    guard let url = activity.webpageURL else { return }
-                    handleUniversalLink(url)
-                }
-        }
-        // scenePhase becomes .active before onContinueUserActivity delivers the URL,
-        // so we wait 0.6s to ensure queueAddPartnerCode has already run.
-        // consumePendingNavigation is idempotent — safe to call on every foreground transition.
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, authViewModel.isAuthenticated else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                AppNavigation.consumePendingNavigation()
-            }
         }
     }
 
@@ -69,21 +55,6 @@ struct watchdApp: App {
         }
     }
 
-    // Handles https:// Universal Links
-    private func handleUniversalLink(_ url: URL) {
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
-        if components.path == "/reset-password",
-           let token = components.queryItems?.first(where: { $0.name == "token" })?.value,
-           !token.isEmpty {
-            postResetPasswordNotification(token: token)
-            return
-        }
-
-        if let code = addPartnerCode(from: url) {
-            handleAddPartnerCode(code)
-        }
-    }
-
     private func postResetPasswordNotification(token: String) {
         NotificationCenter.default.post(
             name: NSNotification.Name("showResetPassword"),
@@ -93,15 +64,10 @@ struct watchdApp: App {
     }
 
     private func handleAddPartnerCode(_ rawCode: String) {
-        guard let code = AppNavigation.normalizedShareCode(from: rawCode) else { return }
-
-        AppNavigation.queueAddPartnerCode(code)
-
+        guard AppNavigation.normalizedShareCode(from: rawCode) != nil else { return }
+        AppNavigation.queueAddPartnerCode(rawCode)
         if authViewModel.isAuthenticated {
-            // Covers the case where the app is already in the foreground (scenePhase won't change).
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                AppNavigation.consumePendingNavigation()
-            }
+            AppNavigation.openPartnersTab()
         }
     }
 
